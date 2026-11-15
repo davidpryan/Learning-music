@@ -1,0 +1,58 @@
+// Public-domain tunes, encoded for this project in its own text notation.
+import { mk, Passage } from '../passage';
+export interface Piece { id: string; title: string; by?: string; level: number; passage: Passage; source: string; license: string }
+const SRC = 'Encoded for Learning Music from the public-domain tune', LIC = 'Composition in the public domain; this encoding MIT';
+const T = 'Traditional';
+const pc = (id: string, title: string, by: string, level: number, key: string, time: [number, number], tempo: number, notes: string, bass?: string): Piece =>
+  ({ id, title, by, level, passage: mk(notes, { key, time, tempo, bass, title }), source: SRC, license: LIC });
+
+export const PIECES: Piece[] = [
+  pc('mary', 'Mary Had a Little Lamb', T, 4, 'C', [4, 4], 84, 'E4 D4 C4 D4 E4 E4 E4/2 D4 D4 D4/2 E4 G4 G4/2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4/4'),
+  pc('hotcross', 'Hot Cross Buns', T, 4, 'C', [4, 4], 84, 'E4 D4 C4/2 E4 D4 C4/2 C4/0.5 C4/0.5 C4/0.5 C4/0.5 D4/0.5 D4/0.5 D4/0.5 D4/0.5 E4 D4 C4/2'),
+  pc('rhody', 'Go Tell Aunt Rhody', T, 4, 'C', [4, 4], 84, 'E4/2 E4 D4 C4/2 C4/2 D4/2 D4 F4 E4 D4 C4/2 G4/2 G4 F4 E4/2 E4/2 D4 C4 D4 E4 C4/4'),
+  pc('lightly', 'Lightly Row', T, 4, 'C', [4, 4], 92, 'G4 E4 E4/2 F4 D4 D4/2 C4 D4 E4 F4 G4 G4 G4/2 G4 E4 E4/2 F4 D4 D4/2 C4 E4 G4 G4 E4 E4 E4/2'),
+  pc('cuckoo', 'Cuckoo', T, 4, 'C', [3, 4], 96, 'G4 E4 r/1 G4 E4 r/1 D4 C4 D4 C4/3 D4 D4 E4 F4/2 D4 E4 E4 F4 G4/2 E4 G4 E4 r/1 G4 E4 r/1 F4 E4 D4 C4/3'),
+  pc('ode', 'Ode to Joy', 'Ludwig van Beethoven', 5, 'C', [4, 4], 96, 'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4/1.5 D4/0.5 D4/2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4/1.5 C4/0.5 C4/2'),
+  pc('twinkle', 'Twinkle, Twinkle, Little Star', T, 5, 'C', [4, 4], 92, 'C4 C4 G4 G4 A4 A4 G4/2 F4 F4 E4 E4 D4 D4 C4/2 G4 G4 F4 F4 E4 E4 D4/2 G4 G4 F4 F4 E4 E4 D4/2 C4 C4 G4 G4 A4 A4 G4/2 F4 F4 E4 E4 D4 D4 C4/2'),
+  pc('frere', 'Frère Jacques', T, 5, 'C', [4, 4], 96, 'C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4/2 E4 F4 G4/2 G4/0.5 A4/0.5 G4/0.5 F4/0.5 E4 C4 G4/0.5 A4/0.5 G4/0.5 F4/0.5 E4 C4 C4 G3 C4/2 C4 G3 C4/2'),
+  pc('london', 'London Bridge', T, 5, 'C', [4, 4], 100, 'G4/1.5 A4/0.5 G4 F4 E4 F4 G4/2 D4 E4 F4/2 E4 F4 G4/2 G4/1.5 A4/0.5 G4 F4 E4 F4 G4/2 D4/2 G4/2 E4 C4/3'),
+  pc('row', 'Row, Row, Row Your Boat', T, 5, 'C', [6, 8], 72, 'C4/1.5 C4/1.5 C4/1 D4/0.5 E4/1.5 E4/1 D4/0.5 E4/1 F4/0.5 G4/3 C5/0.5 C5/0.5 C5/0.5 G4/0.5 G4/0.5 G4/0.5 E4/0.5 E4/0.5 E4/0.5 C4/0.5 C4/0.5 C4/0.5 G4/1 F4/0.5 E4/1 D4/0.5 C4/3'),
+  pc('oldmac', 'Old MacDonald', T, 5, 'G', [4, 4], 100, 'G4 G4 G4 D4 E4 E4 D4/2 B4 B4 A4 A4 G4/3 r/1 G4 G4 G4 D4 E4 E4 D4/2 B4 B4 A4 A4 G4/4'),
+  pc('yankee', 'Yankee Doodle', T, 5, 'C', [4, 4], 108, 'C4 C4 D4 E4 C4 E4 D4 G3 C4 C4 D4 E4 C4/2 B3/2 C4 C4 D4 E4 F4 E4 D4 C4 B3 G3 A3 B3 C4/2 C4/2'),
+  pc('jingle', 'Jingle Bells', 'James Pierpont', 5, 'C', [4, 4], 108, 'E4 E4 E4/2 E4 E4 E4/2 E4 G4 C4/1.5 D4/0.5 E4/4 F4 F4 F4/1.5 F4/0.5 F4 E4 E4 E4/0.5 E4/0.5 E4 D4 D4 E4 D4/2 G4/2'),
+  pc('auclair', 'Au Clair de la Lune', T, 5, 'C', [4, 4], 92, 'C4 C4 C4 D4 E4/2 D4/2 C4 E4 D4 D4 C4/4 C4 C4 C4 D4 E4/2 D4/2 C4 E4 D4 D4 C4/4 D4 D4 D4 D4 A3/2 A3/2 D4 C4 B3 A3 G3/4 C4 C4 C4 D4 E4/2 D4/2 C4 E4 D4 D4 C4/4'),
+  pc('aura', 'Aura Lee', 'George R. Poulton', 5, 'C', [4, 4], 88, 'G4 C5 B4 C5 D5 A4 D5/2 C5 B4 A4 B4 C5/4 G4 C5 B4 C5 D5 A4 D5/2 C5 B4 A4 B4 C5/4'),
+  pc('saints', 'When the Saints Go Marching In', T, 5, 'C', [4, 4], 108, 'r/1 C4 E4 F4 G4/4 r/1 C4 E4 F4 G4/4 r/1 C4 E4 F4 G4/2 E4/2 C4/2 E4/2 D4/4'),
+  pc('wenceslas', 'Good King Wenceslas', T, 5, 'C', [4, 4], 100, 'C4 C4 C4 D4 C4 C4 G3/2 A3 G3 A3 B3 C4/2 C4/2 C4 C4 C4 D4 C4 C4 G3/2 A3 G3 A3 B3 C4/2 C4/2'),
+  pc('skip', 'Skip to My Lou', T, 5, 'C', [4, 4], 108, 'E4 E4 C4 C4 E4 E4 G4/2 D4 D4 B3 B3 D4 D4 F4/2 E4 E4 C4 C4 E4 E4 G4/2 D4 E4/0.5 F4/0.5 E4 D4 C4/2 C4/2'),
+  pc('longago', 'Long, Long Ago', 'Thomas Haynes Bayly', 5, 'C', [4, 4], 92, 'C4/2 C4 D4 E4/2 E4 F4 G4/2 A4 G4 E4/4 G4/2 F4 E4 D4/4 F4/2 E4 D4 C4/4'),
+  pc('largo', 'Largo (New World Symphony)', 'Antonín Dvořák', 5, 'C', [4, 4], 66, 'E4/1.5 G4/0.5 G4/2 E4/1.5 D4/0.5 C4/2 D4/1.5 E4/0.5 G4/1.5 E4/0.5 D4/4 E4/1.5 G4/0.5 G4/2 E4/1.5 D4/0.5 C4/2 D4 E4 D4/1.5 C4/0.5 C4/4'),
+  pc('surprise', 'Surprise Symphony theme', 'Joseph Haydn', 5, 'C', [4, 4], 100, 'C4 C4 E4 E4 G4 G4 E4/2 F4 F4 D4 D4 B3 B3 G3/2'),
+  pc('camptown', 'Camptown Races (opening)', 'Stephen Foster', 5, 'C', [4, 4], 108, 'G4 G4 E4 G4 A4 G4 E4/2 E4 D4/3 E4 D4/3'),
+  pc('avignon', "Sur le Pont d'Avignon", T, 5, 'C', [4, 4], 104, 'C4 C4 C4/2 D4 D4 D4/2 E4 F4 G4 C4 B3 C4 D4 G3 C4 C4 C4/2 D4 D4 D4/2 E4 F4 G4 C4 D4 B3 C4/2'),
+  pc('weasel', 'Pop Goes the Weasel', T, 5, 'C', [6, 8], 76, 'C4/1 C4/0.5 D4/1 D4/0.5 E4/0.5 G4/0.5 E4/0.5 C4/1.5 C4/1 C4/0.5 D4/1 D4/0.5 E4/1.5 C4/1.5 C4/1 C4/0.5 D4/1 D4/0.5 E4/0.5 G4/0.5 E4/0.5 C4/1.5 A4/1.5 D4/1 F4/0.5 E4/1.5 C4/1.5'),
+  pc('mice', 'Three Blind Mice', T, 5, 'C', [6, 8], 72, 'E4/1.5 D4/1.5 C4/3 E4/1.5 D4/1.5 C4/3 G4/1.5 F4/1 F4/0.5 E4/3 G4/1.5 F4/1 F4/0.5 E4/3'),
+  pc('mary2', 'Mary Had a Little Lamb (two hands)', T, 6, 'C', [4, 4], 80, 'E4 D4 C4 D4 E4 E4 E4/2 D4 D4 D4/2 E4 G4 G4/2 E4 D4 C4 D4 E4 E4 E4 E4 D4 D4 E4 D4 C4/4', 'C3/4 C3/4 G2/4 C3/4 C3/4 C3/4 G2/4 C3/4'),
+  pc('ode2', 'Ode to Joy (two hands)', 'Ludwig van Beethoven', 6, 'C', [4, 4], 88, 'E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 E4/1.5 D4/0.5 D4/2 E4 E4 F4 G4 G4 F4 E4 D4 C4 C4 D4 E4 D4/1.5 C4/0.5 C4/2', 'C3/4 G2/4 C3/4 C3/2 G2/2 C3/4 G2/4 C3/4 G2/2 C3/2'),
+  pc('twinkle2', 'Twinkle, Twinkle (two hands)', T, 6, 'C', [4, 4], 84, 'C4 C4 G4 G4 A4 A4 G4/2 F4 F4 E4 E4 D4 D4 C4/2 G4 G4 F4 F4 E4 E4 D4/2 G4 G4 F4 F4 E4 E4 D4/2 C4 C4 G4 G4 A4 A4 G4/2 F4 F4 E4 E4 D4 D4 C4/2', 'C3/4 F3/2 C3/2 F3/2 C3/2 G2/2 C3/2 C3/2 F3/2 C3/2 G2/2 C3/2 F3/2 C3/2 G2/2 C3/4 F3/2 C3/2 F3/2 C3/2 G2/2 C3/2'),
+  pc('jingle2', 'Jingle Bells (two hands)', 'James Pierpont', 6, 'C', [4, 4], 96, 'E4 E4 E4/2 E4 E4 E4/2 E4 G4 C4/1.5 D4/0.5 E4/4 F4 F4 F4/1.5 F4/0.5 F4 E4 E4 E4/0.5 E4/0.5 E4 D4 D4 E4 D4/2 G4/2', 'C3/4 C3/4 C3/4 C3/4 F3/4 C3/4 D3/4 G2/4'),
+  pc('largo2', 'Largo (two hands)', 'Antonín Dvořák', 6, 'C', [4, 4], 63, 'E4/1.5 G4/0.5 G4/2 E4/1.5 D4/0.5 C4/2 D4/1.5 E4/0.5 G4/1.5 E4/0.5 D4/4 E4/1.5 G4/0.5 G4/2 E4/1.5 D4/0.5 C4/2 D4 E4 D4/1.5 C4/0.5 C4/4', '[C3 G3]/4 [C3 G3]/4 [G2 D3]/4 [G2 D3]/4 [C3 G3]/4 [C3 G3]/4 [G2 D3]/4 [C3 G3]/4'),
+  pc('canon', 'Canon in D (theme)', 'Johann Pachelbel', 6, 'D', [4, 4], 66, 'F#5/2 E5/2 D5/2 C#5/2 B4/2 A4/2 B4/2 C#5/2', 'D3/2 A2/2 B2/2 F#2/2 G2/2 D3/2 G2/2 A2/2'),
+  pc('amazing', 'Amazing Grace (first half)', T, 6, 'G', [3, 4], 84, 'r/2 D4 G4/2 B4/0.5 G4/0.5 B4/2 A4 G4/2 E4 D4/2 D4 G4/2 B4/0.5 G4/0.5 B4/2 A4 D5/3'),
+  pc('susanna', 'Oh! Susanna', 'Stephen Foster', 6, 'C', [4, 4], 104, 'r/2 r/1 C4/0.5 D4/0.5 E4 G4 G4/1.5 A4/0.5 G4 E4 C4/1.5 D4/0.5 E4 E4 D4 C4 D4/3 C4/0.5 D4/0.5 E4 G4 G4/1.5 A4/0.5 G4 E4 C4/1.5 D4/0.5 E4 E4 D4 D4 C4/3 r/1'),
+  pc('joy', 'Joy to the World (opening)', 'Lowell Mason', 6, 'C', [4, 4], 92, 'C5/2 B4/1.5 A4/0.5 G4/3 F4 E4/2 D4/2 C4/3 G4 A4/3 A4 B4/3 B4 C5/3 r/1'),
+  pc('silent', 'Silent Night (opening)', 'Franz Xaver Gruber', 6, 'C', [3, 4], 84, 'G4/1.5 A4/0.5 G4 E4/3 G4/1.5 A4/0.5 G4 E4/3 D5/2 D5 B4/3 C5/2 C5 G4/3'),
+  pc('brahms', 'Lullaby', 'Johannes Brahms', 6, 'C', [3, 4], 76, 'r/2 E4/0.5 E4/0.5 G4/2 E4/0.5 E4/0.5 G4/2 E4/0.5 G4/0.5 C5 B4/1.5 A4/0.5 A4 G4 D4/0.5 E4/0.5 F4/2 D4/0.5 E4/0.5 F4/2 D4/0.5 F4/0.5 B4/0.5 A4/0.5 G4 B4 C5/3'),
+  pc('alouette', 'Alouette', T, 6, 'C', [4, 4], 104, 'C4/1.5 D4/0.5 E4 E4 D4/0.5 C4/0.5 D4/0.5 E4/0.5 C4 G3 C4/1.5 D4/0.5 E4 E4 D4/0.5 C4/0.5 D4/0.5 E4/0.5 C4/2'),
+  pc('deck', 'Deck the Halls', T, 6, 'C', [4, 4], 112, 'G4/1.5 F4/0.5 E4 D4 C4 D4 E4 C4 D4/0.5 E4/0.5 F4/0.5 D4/0.5 E4/1.5 D4/0.5 C4 B3 C4/2 G4/1.5 F4/0.5 E4 D4 C4 D4 E4 C4 D4/0.5 E4/0.5 F4/0.5 D4/0.5 E4/1.5 D4/0.5 C4 B3 C4/2'),
+  pc('auld', 'Auld Lang Syne', T, 6, 'C', [4, 4], 88, 'r/2 r/1 G3 C4/1.5 C4/0.5 C4 E4 D4/1.5 C4/0.5 D4 E4 C4/1.5 C4/0.5 E4 G4 A4/3 A4 G4/1.5 E4/0.5 E4 C4 D4/1.5 C4/0.5 D4 E4 C4/1.5 A3/0.5 A3 G3 C4/3 r/1'),
+  pc('minuet', 'Minuet in G', 'Christian Petzold', 7, 'G', [3, 4], 100, 'D5 G4/0.5 A4/0.5 B4/0.5 C5/0.5 D5 G4 G4 E5 C5/0.5 D5/0.5 E5/0.5 F#5/0.5 G5 G4 G4 C5 D5/0.5 C5/0.5 B4/0.5 A4/0.5 B4 C5/0.5 B4/0.5 A4/0.5 G4/0.5 F#4 G4/0.5 A4/0.5 B4/0.5 G4/0.5 A4/3', 'G3/2 A3 B3/3 C4/3 B3/3 A3/3 G3/3 D4 B3 G3 D3/3'),
+  pc('birthday', 'Happy Birthday to You', 'Patty and Mildred Hill', 7, 'C', [3, 4], 96, 'r/2 G3/0.75 G3/0.25 A3 G3 C4 B3/2 G3/0.75 G3/0.25 A3 G3 D4 C4/2 G3/0.75 G3/0.25 G4 E4 C4 B3 A3 F4/0.75 F4/0.25 E4 C4 D4 C4/3'),
+  pc('wewish', 'We Wish You a Merry Christmas', T, 7, 'G', [3, 4], 112, 'r/2 D4 G4 G4/0.5 A4/0.5 G4/0.5 F#4/0.5 E4 E4 E4 A4 A4/0.5 B4/0.5 A4/0.5 G4/0.5 F#4 D4 D4 B4 B4/0.5 C5/0.5 B4/0.5 A4/0.5 G4 E4 D4/0.5 D4/0.5 E4 A4 F#4 G4/3'),
+  pc('nacht', 'Eine kleine Nachtmusik (opening)', 'Wolfgang Amadeus Mozart', 7, 'G', [4, 4], 112, 'G4 r/0.5 D4/0.5 G4 r/0.5 D4/0.5 G4/0.5 D4/0.5 G4/0.5 B4/0.5 D5/2 C5 r/0.5 A4/0.5 C5 r/0.5 A4/0.5 C5/0.5 A4/0.5 F#4/0.5 A4/0.5 D4/2'),
+  pc('frere2', 'Frère Jacques (two hands)', T, 7, 'C', [4, 4], 92, 'C4 D4 E4 C4 C4 D4 E4 C4 E4 F4 G4/2 E4 F4 G4/2 G4/0.5 A4/0.5 G4/0.5 F4/0.5 E4 C4 G4/0.5 A4/0.5 G4/0.5 F4/0.5 E4 C4 C4 G3 C4/2 C4 G3 C4/2', '[C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 G3]/1 [G2 G3]/1 [C3 E3 G3]/2 [C3 G3]/1 [G2 G3]/1 [C3 E3 G3]/2'),
+  pc('longago2', 'Long, Long Ago (two hands)', 'Thomas Haynes Bayly', 7, 'C', [4, 4], 84, 'C4/2 C4 D4 E4/2 E4 F4 G4/2 A4 G4 E4/4 G4/2 F4 E4 D4/4 F4/2 E4 D4 C4/4', '[C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 E3 G3]/2 [C3 F3 A3]/2 [C3 E3 G3]/4 [C3 E3 G3]/2 [C3 E3 G3]/2 [B2 D3 G3]/4 [B2 D3 G3]/2 [B2 D3 G3]/2 [C3 E3 G3]/4'),
+  pc('twinkle3', 'Twinkle, Twinkle (lead sheet)', T, 8, 'C', [4, 4], 88, 'C4:C C4 G4 G4 A4:F A4 G4/2:C F4:F F4 E4:C E4 D4:G D4 C4/2:C G4:C G4 F4:F F4 E4:C E4 D4/2:G G4:C G4 F4:F F4 E4:C E4 D4/2:G C4:C C4 G4 G4 A4:F A4 G4/2:C F4:F F4 E4:C E4 D4:G D4 C4/2:C'),
+  pc('ode3', 'Ode to Joy (lead sheet)', 'Ludwig van Beethoven', 8, 'C', [4, 4], 92, 'E4:C E4 F4 G4 G4:G F4 E4 D4 C4:C C4 D4 E4 E4/1.5:C D4/0.5 D4/2:G E4:C E4 F4 G4 G4:G F4 E4 D4 C4:C C4 D4 E4 D4/1.5:G C4/0.5 C4/2:C'),
+  pc('aura3', 'Aura Lee (lead sheet)', 'George R. Poulton', 8, 'C', [4, 4], 84, 'G4:C C5 B4 C5 D5:D7 A4 D5/2 C5:G7 B4 A4 B4 C5/4:C G4:C C5 B4 C5 D5:D7 A4 D5/2 C5:G7 B4 A4 B4 C5/4:C'),
+];
