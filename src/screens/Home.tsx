@@ -1,6 +1,7 @@
 import { useNav } from '../nav';
 import { useS, dayKey, storageNote } from '../store';
-import { dueSkills, nextLesson, liveStreak, playerLevel, playerTitle } from '../sched';
+import { dueSkills, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor } from '../sched';
+import { TRACKS, TRACK_NAME } from '../content';
 import { CFG } from '../config';
 import { Icon, Bar, TopBar } from '../ui/common';
 import { dailyChallenge } from '../games/games';
@@ -10,6 +11,8 @@ export function Home() {
   const day = s.days[dayKey()] ?? { min: 0, xp: 0, goal: false }, goal = s.profile.dailyGoalMin;
   const due = dueSkills(s).length, nl = nextLesson(s), streak = liveStreak(s), xp = s.profile.xp;
   const dc = dailyChallenge(), dcDone = !!s.counters['dailyDone:' + dayKey()];
+  const fresh = !Object.keys(s.lessons).length;
+  const gates = TRACKS.map((t) => ({ t, g: gateFor(s, t) })).filter((x) => x.g && x.g.todo.length);
   return (
     <>
       <TopBar title="Learning Music" sub={`${playerTitle(xp)} · level ${playerLevel(xp)}`} right={<>
@@ -23,8 +26,15 @@ export function Home() {
           </div>
           <Bar v={day.min / goal} ok={day.goal} />
         </div>
+        {fresh && <div className="card line col" style={{ gap: 6 }}><b>How this works</b>
+          <div className="small">1. Take a short lesson. Passing its 5-question check unlocks skills.</div>
+          <div className="small">2. Practise those skills in drills, in the daily session, or in games. They all count.</div>
+          <div className="small">3. The app brings each skill back just before you would forget it. A new level opens once most skills of the one before are solid.</div></div>}
         <button className="btn primary big" onClick={() => nav.go({ n: 'session' })}><Icon name="playtri" size={16} />Start today's session · about {goal} min</button>
         {nl && <button className="card tap" onClick={() => nav.go({ n: 'lesson', id: nl.id })}><Icon name="learn" /><span className="grow"><span className="small muted">Continue · {nl.track} lesson {nl.id}</span><br /><b>{nl.title}</b></span><Icon name="playtri" size={14} /></button>}
+        {gates.map(({ t, g }) => { const d = drillFor(g!.todo); return (
+          <button key={t} className="card tap" onClick={() => nav.go({ n: 'run', title: `Unlock ${TRACK_NAME[t]} level ${g!.lesson.level}`, sub: `${g!.ready} of ${g!.need} skills ready`, items: d.items, count: d.count, ctx: 'practice' })}>
+            <Icon name="lock" /><span className="grow"><span className="small muted">{TRACK_NAME[t]} level {g!.lesson.level} is locked · {g!.ready} of {g!.need} skills ready</span><br /><b>Practise to unlock it</b><Bar v={g!.ready / g!.need} /></span><Icon name="playtri" size={14} /></button>); })}
         <div className="grid2">
           <button className="card tap" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }} onClick={() => nav.go({ n: 'session' })}><span className="bigstat">{due}</span><span className="small muted">reviews due</span></button>
           <div className="card line" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}><span className="bigstat">{xp % CFG.xpPerLevel}<span className="small muted"> / {CFG.xpPerLevel} XP</span></span><Bar v={(xp % CFG.xpPerLevel) / CFG.xpPerLevel} /><span className="small muted">to level {playerLevel(xp) + 1}</span></div>

@@ -7,7 +7,8 @@ import { TopBar, Bar } from '../ui/common';
 
 function Trend({ pts, unit, label }: { pts: (number | null)[]; unit: string; label: string }) {
   const vals = pts.filter((v): v is number => v != null);
-  if (vals.length < 2) return <div className="small muted">{label}: not enough practice yet to draw a trend.</div>;
+  if (!vals.length) return <div className="small muted">{label}: answer a few questions and it will appear here.</div>;
+  if (vals.length < 2) return <div className="row between small"><b>{label}</b><span>{vals[0].toFixed(unit === '%' ? 0 : 1)}{unit} today. A trend line appears after a second day.</span></div>;
   const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1, W = 300, H = 70;
   const xy = pts.map((v, i) => (v == null ? null : [8 + (i * (W - 16)) / (pts.length - 1), H - 10 - ((v - lo) / span) * (H - 22)] as [number, number])).filter((p): p is [number, number] => !!p);
   return (

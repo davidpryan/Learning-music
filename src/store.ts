@@ -8,7 +8,7 @@ import { CFG } from './config';
 export type InputMode = 'screen' | 'mic' | 'midi' | 'choice';
 export interface Settings {
   input: InputMode; timbre: Timbre; volume: number; metVolume: number; notationScale: number;
-  nameSystem: 'letters' | 'solfege'; keyLabels: 'auto' | 'on' | 'off'; reducedMotion: boolean; theme: 'light' | 'dark'; voiceMode: boolean; showCursor: boolean;
+  nameSystem: 'letters' | 'solfege'; keyLabels: 'auto' | 'on' | 'off'; reducedMotion: boolean; theme: 'light' | 'dark'; voiceMode: boolean; showCursor: boolean; bigKeys: boolean;
 }
 export interface SkillState { status: 'learning' | 'practiced' | 'mastered'; card: any; recent: { c: boolean; ms: number; t: number }[]; againRun: number; items: Record<string, number[]> }
 export interface Attempt { t: number; skill: string; ex: string; ctx: string; c: boolean; ms: number; input: string; pp?: number; rp?: number }
@@ -32,7 +32,7 @@ export const defaults = (): State => ({
   v: SCHEMA,
   profile: {
     xp: 0, dailyGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
-    settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true },
+    settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false },
   },
   skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, userPieces: [],
 });

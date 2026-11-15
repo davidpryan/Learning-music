@@ -72,8 +72,8 @@ export function Settings() {
       <section className="card line col"><h2>Notation and display</h2>
         <label className="field">Notation size<input type="range" min={0.8} max={1.6} step={0.1} value={st.notationScale} onChange={(e) => up((x) => { x.notationScale = +e.target.value; })} /></label>
         <label className="field">Note names<select value={st.nameSystem} onChange={(e) => up((x) => { x.nameSystem = e.target.value as any; })}><option value="letters">Letters (C D E)</option><option value="solfege">Solfege (Do Re Mi)</option></select></label>
-        <label className="field">Labels on keyboard keys<select value={st.keyLabels} onChange={(e) => up((x) => { x.keyLabels = e.target.value as any; })}><option value="auto">Only the C keys</option><option value="on">Every key</option><option value="off">Only the C keys, no hints</option></select></label>
-        <div className="checks"><label><input type="checkbox" checked={st.showCursor} onChange={(e) => up((x) => { x.showCursor = e.target.checked; })} />Show the reading cursor</label>
+        <label className="field">Labels on keyboard keys<select value={st.keyLabels} onChange={(e) => up((x) => { x.keyLabels = e.target.value as any; })}><option value="auto">Every key at first, then only the Cs</option><option value="on">Always every key</option><option value="off">Only the C keys</option></select></label>
+        <div className="checks"><label><input type="checkbox" checked={st.bigKeys} onChange={(e) => up((x) => { x.bigKeys = e.target.checked; })} />Wide keys (swipe the keyboard sideways)</label><label><input type="checkbox" checked={st.showCursor} onChange={(e) => up((x) => { x.showCursor = e.target.checked; })} />Show the reading cursor</label>
           <label><input type="checkbox" checked={st.theme === 'dark'} onChange={(e) => up((x) => { x.theme = e.target.checked ? 'dark' : 'light'; })} />Dark theme</label>
           <label><input type="checkbox" checked={st.reducedMotion} onChange={(e) => up((x) => { x.reducedMotion = e.target.checked; })} />Reduce motion</label></div>
       </section>

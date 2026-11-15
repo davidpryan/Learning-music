@@ -10,7 +10,7 @@ import { CFG } from '../config';
 import { tempoFor, reportTempo } from '../sched';
 import { useS, InputMode } from '../store';
 import { Keyboard } from './Keyboard';
-import { MicBar, MidiBar, Icon } from './common';
+import { MicBar, MidiBar, Icon, playPassage } from './common';
 
 export interface PerfExtra { pp: number; rp: number; perfect?: number; good?: number; miss?: number }
 type PA = Extract<Answer, { kind: 'rhythm' | 'perform' }>;
@@ -21,7 +21,8 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const passage = a.passage, expectP = a.kind === 'perform' ? a.expect ?? passage : passage;
   const unit = passage.time[1] === 8 ? 1.5 : 1, bar = barLen(passage.time), clicksPerBar = Math.max(1, Math.round(bar / unit));
   const tKey = a.kind === 'perform' ? a.tempoKey : 'rhythm';
-  const tempo = useMemo(() => tempoOverride || a.tempo || (tKey ? tempoFor(tKey, passage.tempo) : passage.tempo), []);
+  const startTempo = useMemo(() => tempoOverride || a.tempo || (tKey ? tempoFor(tKey, passage.tempo) : passage.tempo), []);
+  const [tempo, setTempo] = useState(startTempo);
   const qMs = 60000 / tempo / unit, total = totalBeats(passage.staves[0].notes);
   const listenFirst = a.kind === 'rhythm' && !a.visual;
   const [phase, setPhase] = useState<'scan' | 'listen' | 'countin' | 'play' | 'result'>('scan');
@@ -38,7 +39,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
     if (phase !== 'scan' || listenFirst || left <= 0) return;
     const id = setTimeout(() => { if (left <= 1) begin(); else setLeft(left - 1); }, 1000);
     return () => clearTimeout(id);
-  }, [phase, left]);
+  }, [phase, left, tempo]);
   useEffect(() => {
     const u1 = onNote((e) => {
       const r = R.current; if (!r.live || a.kind !== 'perform') return;
@@ -95,7 +96,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
       if (expectP === passage) for (const [id, m] of Object.entries(g.marks)) { const k = id.split(':').slice(0, 2).join(':'), prev = Object.entries(MARK_COLOR).find(([, c]) => c === colors[k])?.[0] as Mark | undefined; if (!prev || RANK.indexOf(m) > RANK.indexOf(prev)) colors[k] = MARK_COLOR[m]; }
       text = `${g.counts.ok} right and in time, ${g.counts.early + g.counts.late} mistimed, ${g.counts.wrong} wrong, ${g.counts.miss} missed${g.extras ? `, ${g.extras} extra` : ''}.`;
     }
-    if (tKey && !a.tempo && !tempoOverride) reportTempo(tKey, passage.tempo, ok);
+    if (tKey && !a.tempo && !tempoOverride && tempo === startTempo) reportTempo(tKey, passage.tempo, ok);
     x.pp = pp; x.rp = rp;
     setResult({ ok, pp, rp, colors, text }); setPhase('result'); setCursor(null); onFinish(ok, x);
   }
@@ -106,12 +107,21 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
       {showScore && <Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={st.notationScale} />}
       {phase === 'scan' && (
         <div className="col">
-          <div className="row between"><span className="chip accent">{tempo} bpm</span>{!listenFirst && <span className="muted small" aria-live="polite">Starts in {left} s</span>}</div>
+          <div className="row">
+            <button className="btn sm" aria-label="Slower" disabled={!!tempoOverride || tempo <= 40} onClick={() => setTempo(tempo - 4)}>−</button>
+            <span className="chip accent">{tempo} bpm</span>
+            <button className="btn sm" aria-label="Faster" disabled={!!tempoOverride || tempo >= 168} onClick={() => setTempo(tempo + 4)}>+</button>
+            <span className="grow" />
+            {!listenFirst && left > 0 && <><span className="muted small" aria-live="polite">Starts in {left} s</span><button className="btn sm ghost" onClick={() => setLeft(0)}>Wait</button></>}
+          </div>
           <button className="btn primary big" onClick={begin}><Icon name="playtri" size={16} />{listenFirst ? 'Listen' : 'Start now'}</button>
         </div>
       )}
       {phase === 'listen' && <div className="card center bold" aria-live="polite">Listen…</div>}
       {phase === 'countin' && <div className="count" aria-live="assertive">{count || 1}</div>}
+      {phase === 'scan' && a.kind === 'perform' && mode === 'screen' && <><div className="small muted">Find your starting position. Nothing counts until the count-in ends.</div><Keyboard lo={range[0]} hi={range[1]} /></>}
+      {phase === 'scan' && a.kind === 'perform' && mode === 'mic' && <MicBar />}
+      {phase === 'scan' && a.kind === 'perform' && mode === 'midi' && <MidiBar />}
       {(phase === 'play' || phase === 'countin') && (
         <div className="col">
           {a.kind === 'rhythm' ? (mode === 'mic' ? <MicBar /> : <button className={'tappad' + (hit ? ' hit' : '')} onPointerDown={(e) => { e.preventDefault(); emitTap('screen'); }}>Tap here, or press any key</button>)
@@ -128,6 +138,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
           </div>
           <div className="small">{result.text}</div>
           <div className="small muted">On the score: green is right and in time, amber is mistimed, red is wrong, grey was missed.</div>
+          <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => { stopAll(); playPassage(expectP, tempo * unit); }}><Icon name="playtri" size={14} />Hear how it goes</button>
         </div>
       )}
     </div>

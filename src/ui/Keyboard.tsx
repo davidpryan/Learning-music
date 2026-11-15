@@ -16,7 +16,9 @@ export function Keyboard({ lo = 60, hi = 84, marks, selected, labels, silent, sh
   const [oct, setOct] = useState(0);
   const wrap = useRef<HTMLDivElement>(null);
   const whites = useMemo(() => { const w: number[] = []; for (let m = lo; m <= hi; m++) if (!isBlack(m)) w.push(m); return w; }, [lo, hi]);
-  const showLabels = labels ?? (get().profile.settings.keyLabels === 'on');
+  const cfg = get().profile.settings;
+  // 'auto': name every key while you are new to reading (until reading lesson R.4 is passed), then only the Cs
+  const showLabels = labels ?? (cfg.keyLabels === 'on' || (cfg.keyLabels === 'auto' && !get().lessons['R.4']?.passedAt));
   const press = (m: number) => {
     if (display) return;
     if (!silent) playNote(m, undefined, 0.6, get().profile.settings.timbre);
@@ -46,7 +48,7 @@ export function Keyboard({ lo = 60, hi = 84, marks, selected, labels, silent, sh
   const n = whites.length;
   return (
     <div className="kb-wrap" ref={wrap}>
-      <div className={'kb' + (short ? ' short' : '')} style={{ minWidth: n <= 15 ? n * 22 : n * 32 }} role="group" aria-label="Piano keyboard">
+      <div className={'kb' + (short ? ' short' : '')} style={{ minWidth: cfg.bigKeys ? n * 44 : n <= 15 ? n * 22 : n * 32 }} role="group" aria-label="Piano keyboard">
         {whites.map((m) => (
           <button key={m} type="button" className={cls(m, 'wk')} aria-label={label(fromMidi(m), true)} tabIndex={display ? -1 : 0}
             onPointerDown={(e) => { e.preventDefault(); press(m); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(m); } }}>

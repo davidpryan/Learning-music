@@ -5,7 +5,7 @@ import { mulberry, label, fromMidi, pc } from '../music';
 import { freshSeed } from '../gen';
 import { Score } from '../notation';
 import { onNote } from '../input';
-import { stopAll } from '../audio';
+import { stopAll, playSeq } from '../audio';
 import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
 import { get, useS, InputMode } from '../store';
@@ -61,6 +61,8 @@ export function Runner(p: RunnerProps) {
     const ms = Math.max(0, performance.now() - R.current.t0);
     record({ skillId: item.skillId, ex: item.ex, ctx: p.ctx, correct: ok, ms, input: used, hinted: hint, pp: x?.pp, rp: x?.rp, item: q.item, combo: p.combo });
     if (ok) R.current.correct++;
+    // a miss always sounds the right answer
+    if (!ok && a.kind === 'steps') { stopAll(); try { playSeq(a.steps.map((st, k) => ({ t: k * 0.55, d: 0.55, midis: st })), 60, settings.timbre, 0.25, false); } catch { /* no audio yet */ } }
     setRes({ ok }); p.onAnswer?.(ok, q, x);
     if (p.auto) R.current.timer = setTimeout(next, isPerf ? 1800 : ok ? 650 : 1300);
     else if (ok && !isPerf) R.current.timer = setTimeout(next, 800);
@@ -100,7 +102,7 @@ export function Runner(p: RunnerProps) {
       {isPerf && (
         <>
           {!p.bare && !res && <InputSwitch />}
-          <Performer key={`p${i}-${tryN}`} a={a as any} q={q} mode={mode} scan={p.scan} tempoOverride={p.tempoOverride} onFinish={(ok, x) => finish(ok, mode, x)} />
+          <Performer key={`p${i}-${tryN}`} a={a as any} q={q} mode={mode} scan={p.scan ?? (p.bare && p.ctx === 'lesson' ? 0 : undefined)} tempoOverride={p.tempoOverride} onFinish={(ok, x) => finish(ok, mode, x)} />
         </>
       )}
 
@@ -169,14 +171,14 @@ function SlotsArea({ slots, done, hint, onFinish }: { slots: Slot[]; done: boole
     <div className="col">
       {slots.map((sl, si) => {
         const wrong = sl.choices.filter((c) => c !== sl.value), gone = hint ? wrong.filter((_, j) => j % 2 === 0).slice(0, Math.max(0, wrong.length - 1)) : [];
-        const tight = sl.choices.every((c) => c.length <= 4);
+        const tight = !sl.scores && sl.choices.every((c) => c.length <= 4);
         return (
           <div key={si}>
             {slots.length > 1 && <h3>{sl.label}</h3>}
-            <div className={'choices' + (tight ? ' tight' : '')} role="group" aria-label={sl.label}>
-              {sl.choices.map((c) => {
+            <div className={sl.scores ? 'col' : 'choices' + (tight ? ' tight' : '')} role="group" aria-label={sl.label}>
+              {sl.choices.map((c, ci) => {
                 const cls = done ? (c === sl.value ? ' right' : pick[si] === c ? ' wrong' : '') : gone.includes(c) ? ' gone' : '';
-                return <button key={c} className={'choice' + cls} aria-pressed={pick[si] === c} disabled={done || gone.includes(c)} onClick={() => choose(si, c)}>{c}{done && c === sl.value ? ' ✓' : done && pick[si] === c ? ' ✗' : ''}</button>;
+                return <button key={c} className={'choice' + cls} aria-pressed={pick[si] === c} disabled={done || gone.includes(c)} onClick={() => choose(si, c)} style={sl.scores ? { textAlign: 'left', padding: 8 } : undefined}>{c}{done && c === sl.value ? ' ✓' : done && pick[si] === c ? ' ✗' : ''}{sl.scores && <Score spec={sl.scores[ci]} />}</button>;
               })}
             </div>
           </div>

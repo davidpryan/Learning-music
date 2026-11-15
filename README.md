@@ -30,6 +30,7 @@ Browser tests drive a real Chrome through the app (they expect Chrome at `/usr/b
 npm run dev &
 node tests/e2e.mjs      # renders every figure, piece and generated question; walks every screen
 node tests/flows.mjs    # answers questions through the input bus; checks grading, unlocks, games, data
+node tests/ux.mjs       # placement quiz, lock guidance, Back button, alternative answer modes, tools, themes
 ```
 
 ## Put it online

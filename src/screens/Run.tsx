@@ -8,12 +8,12 @@ import { dayKey } from '../store';
 import { LessonView } from './Lesson';
 import { GAMES } from '../games/games';
 
-export function Done({ title, lines, onAgain, onExit }: { title: string; lines: string[]; onAgain?: () => void; onExit: () => void }) {
+export function Done({ title, lines, onAgain, onExit, againLabel = 'Again' }: { title: string; lines: string[]; onAgain?: () => void; onExit: () => void; againLabel?: string }) {
   return (
     <div className="col center" style={{ paddingTop: 24 }}>
       <h1>{title}</h1>
       {lines.map((l, i) => <div key={i} className={i ? 'muted' : 'bigstat'}>{l}</div>)}
-      <div className="row" style={{ marginTop: 12 }}>{onAgain && <button className="btn grow" onClick={onAgain}><Icon name="replay" size={16} />Again</button>}<button className="btn primary grow" onClick={onExit} autoFocus>Done</button></div>
+      <div className="row" style={{ marginTop: 12 }}>{onAgain && <button className="btn grow" onClick={onAgain}><Icon name="replay" size={16} />{againLabel}</button>}<button className="btn primary grow" onClick={onExit} autoFocus>Done</button></div>
     </div>
   );
 }
@@ -55,7 +55,8 @@ export function Timed({ title, ex, preset, highKey, skillId, seconds = 60, onEnd
   );
 }
 
-export function Session() {
+export function Session() { const [k, setK] = useState(0); return <SessionRun key={k} more={() => setK(k + 1)} />; }
+function SessionRun({ more }: { more: () => void }) {
   const nav = useNav(), s = useS();
   const [items] = useState<SessionItem[]>(() => buildSession(get()));
   const [i, setI] = useState(0), [asked, setAsked] = useState(false), [stop, setStop] = useState(false);
@@ -63,7 +64,7 @@ export function Session() {
   const it = items[i];
   const next = () => setI(i + 1);
   if (!items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Nothing is due" lines={['All caught up', 'Start a lesson from the Learn tab, or play a game.']} onExit={nav.back} /></main></>;
-  if (stop || i >= items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Session complete" lines={[`${Math.floor(day?.min ?? 0)} min today`, goalMet ? 'Daily goal met.' : 'Keep going any time to reach your goal.']} onExit={nav.back} /></main></>;
+  if (stop || i >= items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Session complete" lines={[`${Math.floor(day?.min ?? 0)} min today`, goalMet ? 'Daily goal met.' : `${Math.max(1, Math.ceil(s.profile.dailyGoalMin - (day?.min ?? 0)))} min to go for today's goal.`]} onAgain={more} againLabel={goalMet ? 'One more round' : 'Keep going'} onExit={nav.back} /></main></>;
   if (goalMet && !asked && i > 0) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main col center" style={{ paddingTop: 24 }}><h1>Daily goal reached</h1><p className="muted">{items.length - i} more step{items.length - i > 1 ? 's' : ''} in this session. Everything from here is optional.</p><div className="row"><button className="btn grow" onClick={() => setStop(true)}>Finish</button><button className="btn primary grow" onClick={() => setAsked(true)}>Keep going</button></div></main></>;
   const head = <TopBar title="Today's session" sub={`Step ${i + 1} of ${items.length}`} onBack={nav.back} right={<button className="btn sm ghost" onClick={next}>Skip</button>} />;
   if (it.kind === 'lesson') return <LessonView key={i} id={it.lesson.id} onExit={next} />;

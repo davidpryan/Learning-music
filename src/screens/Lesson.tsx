@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useNav } from '../nav';
 import { LESSON_BY_ID, TRACK_NAME } from '../content';
 import { Runner, RunItem } from '../ui/Runner';
 import { Figure, TopBar, Icon } from '../ui/common';
-import { passLesson, skillsOf } from '../sched';
+import { passLesson, skillsOf, drillFor } from '../sched';
 import { stopAll } from '../audio';
 
 export function LessonView({ id, onExit }: { id: string; onExit: () => void }) {
   const l = LESSON_BY_ID[id];
   const [step, setStep] = useState(0), [phase, setPhase] = useState<'steps' | 'check' | 'result'>('steps'), [score, setScore] = useState(0), [round, setRound] = useState(0);
-  const sk = skillsOf(id);
+  const sk = skillsOf(id), nav = useNav(), credit = useRef<{ skillId?: string; ok: boolean }[]>([]);
   const quiz: RunItem[] = (l.quiz ?? l.unlocks).map((u, i) => ({ ex: u.ex, preset: u.preset, skillId: l.quiz ? undefined : sk[i]?.id }));
   const st = l.steps[step], last = step === l.steps.length - 1;
   const finishSteps = () => { stopAll(); if (!quiz.length) { passLesson(id, 5); setScore(5); setPhase('result'); } else setPhase('check'); };
@@ -32,7 +33,7 @@ export function LessonView({ id, onExit }: { id: string; onExit: () => void }) {
         {phase === 'check' && (
           <>
             <span className="chip accent" style={{ alignSelf: 'flex-start' }}>Check · 5 questions · pass with 4</span>
-            <Runner key={round} items={quiz} count={5} ctx="lesson" onDone={(r) => { setScore(r.correct); if (r.correct >= 4) passLesson(id, r.correct); setPhase('result'); }} />
+            <Runner key={round} items={quiz} count={5} ctx="lesson" onAnswer={(ok) => { credit.current.push({ skillId: quiz[credit.current.length % quiz.length].skillId, ok }); }} onDone={(r) => { setScore(r.correct); if (r.correct >= 4) passLesson(id, r.correct, false, credit.current); credit.current = []; setPhase('result'); }} />
           </>
         )}
         {phase === 'result' && (
@@ -42,6 +43,7 @@ export function LessonView({ id, onExit }: { id: string; onExit: () => void }) {
             {pass ? (
               <>
                 {sk.length > 0 && <div className="card" style={{ textAlign: 'left' }}><h3>Unlocked for practice, reviews and games</h3>{sk.map((k) => <div key={k.id} className="row" style={{ padding: '3px 0' }}><Icon name="check" size={16} />{k.title}</div>)}</div>}
+                {sk.length > 0 && <button className="btn big" onClick={() => { const d = drillFor(sk); nav.go({ n: 'run', title: l.title, sub: 'Practise what you unlocked', items: d.items, count: d.count, ctx: 'practice' }); }}>Practise these now</button>}
                 <button className="btn primary big" onClick={onExit} autoFocus>Continue</button>
               </>
             ) : (

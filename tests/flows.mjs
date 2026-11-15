@@ -7,7 +7,7 @@ const errors = []; page.on('pageerror', (e) => errors.push('pageerror: ' + e.mes
 await page.goto(URL, { waitUntil: 'networkidle0' });
 const fails = []; const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); if (!ok) fails.push(name); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const clickText = async (text, sel = 'button') => { const ok = await page.evaluate((text, sel) => { const b = [...document.querySelectorAll(sel)].find((x) => x.textContent.trim().includes(text) && !x.disabled); if (b) { b.click(); return true; } return false; }, text, sel); await sleep(200); return ok; };
+const clickText = async (text, sel = 'button') => { const ok = await page.evaluate((text, sel) => { const root = document.querySelector('.sheet-bg') ?? document.querySelector('.shell:not([hidden])') ?? document; const b = [...(sel.startsWith('.tabbar') ? document : root).querySelectorAll(sel)].find((x) => x.textContent.trim().includes(text) && !x.disabled); if (b) { b.click(); return true; } return false; }, text, sel); await sleep(200); return ok; };
 const has = (text) => page.evaluate((t) => document.body.innerText.includes(t), text);
 const back = () => clickText('', '.topbar .iconbtn');
 const text = () => page.evaluate(() => document.body.innerText.replace(/\n+/g, ' | ').slice(0, 260));

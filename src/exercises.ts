@@ -5,12 +5,12 @@ import {
 } from './music';
 import { Passage, PNote, onsets } from './passage';
 import type { ScoreSpec } from './notation';
-import { playSeq, SeqEv, Timbre } from './audio';
+import { playSeq, SeqEv, Timbre, click, playNote, now } from './audio';
 import { genPhrase, genRhythm, LEVELS, patterns } from './gen';
 import { PIECES } from './content/pieces';
 import { get } from './store';
 
-export interface Slot { label: string; choices: string[]; value: string }
+export interface Slot { label: string; choices: string[]; value: string; scores?: ScoreSpec[] }
 export type Answer =
   | { kind: 'steps'; steps: number[][]; octaveFree: boolean; bass?: boolean; alt?: Slot[] }
   | { kind: 'slots'; slots: Slot[] }
@@ -44,7 +44,9 @@ const cadence = (k: Key): SeqEv[] => [0, 3, 4, 0].map((d, i) => ({ t: i, d: i ==
 const ROOTS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'], ROOTS_ACC = ['Db', 'Eb', 'F#', 'Ab', 'Bb'];
 const VAL_NAME: Record<string, string> = { 4: 'Whole', 3: 'Dotted half', 2: 'Half', 1.5: 'Dotted quarter', 1: 'Quarter', 0.5: 'Eighth', 0.25: 'Sixteenth' };
 const BEATS: Record<string, string> = { 4: '4', 3: '3', 2: '2', 1.5: '1½', 1: '1', 0.5: '½', 0.25: '¼' };
-const kbFor = (ms: number[]): [number, number] => { const lo = 12 * Math.floor((Math.min(...ms) - 2) / 12); let hi = lo + 24; while (hi < Math.max(...ms) + 2) hi += 12; return [lo, hi]; };
+/** The smallest whole-octave keyboard that holds these notes, so keys stay as wide as possible on a phone. */
+const kbFor = (ms: number[]): [number, number] => { const lo = 12 * Math.floor(Math.min(...ms) / 12); return [lo, Math.max(lo + 12, 12 * Math.ceil(Math.max(...ms) / 12))]; };
+const CLEF_KB: Record<string, Record<Clef, [number, number]>> = { ledger: { treble: [57, 84], bass: [36, 64] }, other: { treble: [60, 84], bass: [36, 60] } };
 function pickChord(r: Rng, p: any): { root: Pitch; q: string; inv: number } {
   const roots = [...ROOTS, ...(p.acc ? ROOTS_ACC : [])];
   for (let i = 0; i < 60; i++) {
@@ -96,7 +98,7 @@ def({
     const letters = LETTERS.map((l) => pretty(l + (n.a === 1 ? '#' : n.a === -1 ? 'b' : '')));
     const choices = n.a ? [...LETTERS.map((l) => pretty(l)), ...letters] : LETTERS.map((l) => pretty(l));
     return {
-      prompt: 'Play or name this note', score: free([whole([n])], clef), kbRange: kbFor([midi(n)]),
+      prompt: 'Play or name this note', score: free([whole([n])], clef), kbRange: p.range === 'low' || p.range === 'landmarks' ? kbFor([midi(n)]) : (CLEF_KB[p.range === 'ledger' ? 'ledger' : 'other'][clef]),
       answer: { kind: 'steps', steps: [[midi(n)]], octaveFree: false, alt: [{ label: 'Note', choices, value: pretty(pname(n)) }] },
       item: `${clef}:${pname(n, true)}`, explain: `${label(n, true)} on the ${clef} staff`,
     };
@@ -343,7 +345,8 @@ def({
   id: 'E2', name: 'Pitch matching', track: 'ear', blurb: 'A note: sing or play it back.', target: 10000,
   params: [{ key: 'white', label: 'White keys only', type: 'bool' }], defaults: { white: true },
   gen(p, r) {
-    let m = rint(r, 57, 72); while (p.white && isBlack(m)) m = rint(r, 57, 72); const tb = timbre(p);
+    const vr = get().profile.settings.input === 'mic' ? get().profile.voiceRange : null, lo = vr ? vr[0] : 57, hi = vr ? Math.max(vr[0] + 4, vr[1]) : 72;
+    let m = rint(r, lo, hi); while (p.white && isBlack(m)) m = rint(r, lo, hi); const tb = timbre(p);
     return { prompt: 'Sing or play this note back', sub: 'Any octave counts', play: () => playSeq([{ t: 0, d: 2, midis: [m] }], 80, tb), kbRange: [48, 72], answer: { kind: 'steps', steps: [[m]], octaveFree: true }, item: 'match', explain: label(fromMidiSimple(m), true) };
   },
 });
@@ -396,10 +399,21 @@ def({
 });
 def({
   id: 'E6', name: 'Rhythm dictation', track: 'ear', blurb: 'A played rhythm: tap it back.', target: 0,
-  params: [{ key: 'level', label: 'Rhythm vocabulary', type: 'select', options: LEVEL_OPTS(1, 6) }, { key: 'bars', label: 'Bars', type: 'select', options: [[1, '1'], [2, '2'], [4, '4']] }, { key: 'tempo', label: 'Tempo', type: 'num', min: 50, max: 140, step: 4 }],
-  defaults: { level: 1, bars: 1, tempo: 80 },
+  params: [{ key: 'level', label: 'Rhythm vocabulary', type: 'select', options: LEVEL_OPTS(1, 6) }, { key: 'bars', label: 'Bars', type: 'select', options: [[1, '1'], [2, '2'], [4, '4']] }, { key: 'tempo', label: 'Tempo', type: 'num', min: 50, max: 140, step: 4 }, { key: 'mode', label: 'Answer by', type: 'select', options: [['auto', 'Tapping (or picking, if your input is Choices)'], ['tap', 'Tapping it back'], ['pick', 'Picking the written rhythm']] }],
+  defaults: { level: 1, bars: 1, tempo: 80, mode: 'auto' },
   gen(p, r) {
-    const passage: Passage = { key: 'C', time: [4, 4], tempo: p.tempo, staves: [{ clef: 'percussion', notes: genRhythm(p.level, r, p.bars, [4, 4]) }] };
+    const mkP = (): Passage => ({ key: 'C', time: [4, 4], tempo: p.tempo, staves: [{ clef: 'percussion', notes: genRhythm(p.level, r, p.bars, [4, 4]) }] });
+    const passage = mkP();
+    if (p.mode === 'pick' || (p.mode !== 'tap' && get().profile.settings.input === 'choice')) {
+      const sig = (x: Passage) => x.staves[0].notes.map((n) => (n.rest ? -n.d : n.d)).join(',');
+      const opts = [passage]; for (let i = 0; i < 40 && opts.length < 3; i++) { const c = mkP(); if (!opts.some((o) => sig(o) === sig(c))) opts.push(c); }
+      const order = shuffle(r, opts), names = ['A', 'B', 'C'].slice(0, order.length), spb = 60 / p.tempo, os = onsets(passage), len = p.bars * 4;
+      return {
+        prompt: 'Which rhythm did you hear?', sub: 'One bar of clicks, then the rhythm',
+        play: () => { const t0 = now() + 0.15; for (let i = 0; i < 4 + len; i++) click(t0 + i * spb, i % 4 === 0); os.forEach((o) => playNote(79, t0 + (4 + o.t) * spb, 0.14, 'sine', 0.8, true)); return (4 + len) * spb + 0.3; },
+        answer: { kind: 'slots', slots: [{ label: 'Rhythm', choices: names, value: names[order.indexOf(passage)], scores: order.map((o) => ({ passage: o, showTime: true })) }] }, item: `erh:${p.level}`, explain: 'The matching rhythm is marked',
+      };
+    }
     return { prompt: 'Listen, then tap the rhythm back', sub: 'You will hear it once with the beat, then it is your turn', answer: { kind: 'rhythm', passage, tempo: p.tempo, visual: false }, item: `erh:${p.level}`, explain: 'Rhythm echo' };
   },
 });

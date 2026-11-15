@@ -40,7 +40,25 @@ export function lockReason(s: State, l: Lesson): string {
   if (i > 0 && !s.lessons[tl[i - 1].id]?.passedAt) return `Pass "${tl[i - 1].title}" first.`;
   const need = (l.needs ?? []).find((n) => !s.lessons[n]?.passedAt);
   if (need) return `Needs theory lesson ${need}, "${LESSON_BY_ID[need].title}".`;
-  return `Practise the level ${l.level - 1} skills until 80% of them are at "Practiced".`;
+  const g = gateFor(s, l.track);
+  return g && g.lesson.id === l.id ? `Level ${l.level} opens when ${g.need} of the ${g.total} skills from the level before are at "Practiced" (10 answers at 80% or better). So far: ${g.ready}.` : `Practise the skills from the level before until 80% of them are at "Practiced".`;
+}
+/** When the next lesson in a track is held back only by the level rule: the skills still to practise, and how many are needed. */
+export function gateFor(s: State, t: Track): { lesson: Lesson; todo: Skill[]; ready: number; need: number; total: number } | null {
+  const tl = trackLessons(t), i = tl.findIndex((l) => !s.lessons[l.id]?.passedAt);
+  if (i <= 0) return null;
+  const l = tl[i];
+  if (!s.lessons[tl[i - 1].id]?.passedAt || !(l.needs ?? []).every((n) => s.lessons[n]?.passedAt) || levelUnlocked(s, t, l.level)) return null;
+  const prev = Math.max(...tl.filter((x) => x.level < l.level).map((x) => x.level));
+  const sk = Object.values(SKILLS).filter((k) => k.track === t && k.level === prev);
+  const done = (k: Skill) => { const st = s.skills[k.id]?.status; return st === 'practiced' || st === 'mastered'; };
+  return { lesson: l, todo: sk.filter((k) => !done(k)), ready: sk.filter(done).length, need: Math.ceil(sk.length * CFG.levelUnlockShare), total: sk.length };
+}
+export const PERFORM_EX = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'];
+/** A drill over several skills: quick-answer ones together, or at-tempo ones together. */
+export function drillFor(skills: Skill[]): { items: { ex: string; preset: Record<string, any>; skillId: string }[]; count: number } {
+  const quick = skills.filter((k) => !PERFORM_EX.includes(k.ex)), use = quick.length ? quick : skills;
+  return { items: use.map((k) => ({ ex: k.ex, preset: k.preset, skillId: k.id })), count: quick.length ? Math.max(10, Math.min(20, use.length * 4)) : Math.min(6, Math.max(3, use.length * 2)) };
 }
 export function nextLesson(s: State, t?: Track): Lesson | null {
   const order = t ? [t] : [...TRACKS].sort((a, b) => trackLevel(s, a) - trackLevel(s, b));
@@ -51,11 +69,12 @@ export function trackLevel(s: State, t: Track): number {
   const passed = trackLessons(t).filter((l) => s.lessons[l.id]?.passedAt);
   return passed.length ? Math.max(...passed.map((l) => l.level)) : 0;
 }
-export function passLesson(id: string, score: number, quiet = false) {
+export function passLesson(id: string, score: number, quiet = false, credit: { skillId?: string; ok: boolean }[] = []) {
   set((s) => {
     const first = !s.lessons[id]?.passedAt;
     s.lessons[id] = { passedAt: s.lessons[id]?.passedAt ?? Date.now(), best: Math.max(score, s.lessons[id]?.best ?? 0) };
     for (const k of skillsOf(id)) if (!s.skills[k.id]) s.skills[k.id] = { status: 'learning', card: createEmptyCard(new Date()), recent: [], againRun: 0, items: {} };
+    if (first) for (const c of credit) { const k = c.skillId ? s.skills[c.skillId] : undefined; if (k) k.recent.push({ c: c.ok, ms: SKILLS[c.skillId!].target || 3000, t: Date.now() }); }
     if (score >= 5 && !quiet) s.counters.perfectChecks = (s.counters.perfectChecks ?? 0) + 1;
     if (first && !quiet) addXp(s, 50);
     checkBadges(s);
@@ -168,7 +187,12 @@ export function buildSession(s: State): SessionItem[] {
   due.filter((k) => !isPerform(k)).slice(0, CFG.sessionReviewCap).forEach((k) => byTrack[k.track].push(k));
   for (let i = 0; i < CFG.sessionReviewCap; i++) for (const t of TRACKS) { const k = byTrack[t][i]; if (k) out.push({ kind: 'review', skill: k, n: 2 }); }
   // 2. one new lesson from the track furthest behind
-  if (due.length <= CFG.sessionNoNewAbove) { const l = nextLesson(s); if (l) out.push({ kind: 'lesson', lesson: l }); }
+  if (due.length <= CFG.sessionNoNewAbove) {
+    const l = nextLesson(s);
+    if (l) out.push({ kind: 'lesson', lesson: l });
+    // every open lesson is done but a level is still locked: practise toward the unlock instead
+    else for (const t of TRACKS) { const g = gateFor(s, t); if (g) { g.todo.filter((k) => !isPerform(k)).slice(0, 3).forEach((k) => out.push({ kind: 'review', skill: k, n: 5 })); break; } }
+  }
   // 3. three reading passages at the current reading level
   const reading = Object.values(SKILLS).filter((k) => k.track === 'reading' && s.skills[k.id] && isPerform(k)).sort((a, b) => b.level - a.level);
   const rhythm = reading.find((k) => k.ex === 'R1'), one = reading.find((k) => k.ex === 'R2'), hard = reading.find((k) => k.ex !== 'R1');
