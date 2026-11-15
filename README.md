@@ -71,7 +71,7 @@ Music is written in a small text notation: `C4 D4/2 r/1 [C4 E4 G4]/2 E4/1.5~ E4/
 
 - Sounds are synthesised in the browser; there are no sampled instruments.
 - The microphone hears one note at a time. Chords and two-hand playing need the on-screen or a MIDI keyboard.
-- The piece library has 49 short public-domain tunes, encoded by hand for this project.
+- The piece library has 48 short public-domain tunes, encoded by hand for this project.
 - Tested in desktop Chrome. Web MIDI is not available in every browser; the app falls back to the other inputs.
 
 ## Licence
