@@ -32,6 +32,15 @@ export function Latency() {
     </div>
   );
 }
+export function SoundTest() {
+  const [done, setDone] = useState(false);
+  return (
+    <div className="col" style={{ gap: 6 }}>
+      <button className="btn" onClick={() => { [60, 64, 67, 72].forEach((m, i) => playNote(m, ac().currentTime + 0.1 + i * 0.3, 0.5, 'piano', 0.7)); setDone(true); }}><Icon name="playtri" size={14} />Test sound</button>
+      {done && <div className="small muted">You should hear four rising notes. If not: turn the volume up; on an iPhone or iPad, flip the ring/silent switch off silent (or turn off Silent Mode in Control Centre); and check no Bluetooth speaker has taken the sound.</div>}
+    </div>
+  );
+}
 export function InputTest() {
   const [last, setLast] = useState('');
   useEffect(() => onNote((e) => setLast(`${midiName(e.midi)} from ${e.source === 'screen' ? 'the on-screen keyboard' : e.source === 'mic' ? 'the microphone' : 'MIDI'}`)), []);
@@ -65,6 +74,7 @@ export function Settings() {
         <div className="small muted">Saved timing offsets: on-screen {s.profile.latency.screen} ms, microphone {s.profile.latency.mic} ms, MIDI {s.profile.latency.midi} ms.</div>
       </section>
       <section className="card line col"><h2>Sound</h2>
+        <SoundTest />
         <label className="field">Instrument<select value={st.timbre} onChange={(e) => { up((x) => { x.timbre = e.target.value as any; }); playNote(60, undefined, 0.8, e.target.value as any); }}><option value="piano">Piano</option><option value="guitar">Guitar</option><option value="strings">Strings</option><option value="sine">Pure tone</option></select></label>
         <label className="field">Volume<input type="range" min={0} max={1} step={0.05} value={st.volume} onChange={(e) => up((x) => { x.volume = +e.target.value; })} /></label>
         <div className="checks"><label><input type="checkbox" checked={st.sfx} onChange={(e) => up((x) => { x.sfx = e.target.checked; })} />Sound effects for right answers and games</label></div>

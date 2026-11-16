@@ -6,7 +6,7 @@ const IV_MP = ['M2', 'M3', 'P4', 'P5', 'M6', 'M7', 'P8'], IV_ALL = ['m2', 'M2', 
 export const THEORY_A: Lesson[] = [
   // ---------------- Level 1: Sound and the staff ----------------
   L('1.1', 'theory', 1, 'Pitch and the keyboard', [
-    s('Musical sounds are higher or lower. That quality is called pitch. On a keyboard, pitch rises as you move right and falls as you move left. Press play to hear three notes climb.', { sound: 'C3/1 C4/1 C5/1', label: 'Low to high' }),
+    s('Musical sounds are higher or lower. That quality is called pitch. On a keyboard, pitch rises as you move right and falls as you move left. Press play to hear three notes climb.', { sound: 'C4/1 C5/1 C6/1', label: 'Low to high' }),
     s('The black keys come in groups of two and three. That repeating pattern is your map: every key can be found from it.', { kb: 'C#4 D#4 F#4 G#4 A#4' }),
     s('The white key just left of any group of two black keys is C. The C nearest the middle of a piano is called middle C.', { kb: 'C4', play: true }),
     s('White keys are named with seven letters. Starting from C they run C D E F G A B, and then C comes round again.', { kb: 'C4 D4 E4 F4 G4 A4 B4', play: true }),

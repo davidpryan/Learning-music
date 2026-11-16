@@ -21,6 +21,35 @@ export function ac(): AudioContext {
   return ctx;
 }
 export const now = () => ac().currentTime;
+
+// ---- getting sound out on phones ----
+// 1. Browsers only start audio from a tap, so every tap, click and key press makes sure the context is running.
+// 2. On iPhone and iPad, Web Audio obeys the ring/silent switch unless the page counts as media playback.
+//    Newer Safari lets us say so directly; older Safari needs a silent <audio> element playing alongside.
+let silentEl: HTMLAudioElement | null = null;
+function silentWavUrl(): string {
+  const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+  return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+}
+export function unlockAudio() {
+  try {
+    const c = ac(); if (c.state !== 'running') c.resume().catch(() => {});
+    const session = (navigator as any).audioSession;
+    if (session) { if (session.type !== 'playback') session.type = 'playback'; return; }
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!iOS) return;
+    if (!silentEl) { silentEl = new Audio(silentWavUrl()); silentEl.loop = true; silentEl.setAttribute('playsinline', ''); }
+    if (silentEl.paused) silentEl.play().catch(() => {});
+  } catch { /* no audio available */ }
+}
+export function installAudioUnlock() {
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach((e) => window.addEventListener(e, unlockAudio, { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) silentEl?.pause(); else if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); });
+}
+/** 'running' when sound can play. */
+export const audioState = () => (ctx ? ctx.state : 'not started');
 export function setVolumes(v: number, m: number, fx = true) { vol = v; metVol = m; sfxOn = fx; if (ctx) { master.gain.value = v; metGain.gain.value = m; } }
 function track(n: AudioScheduledSourceNode) { live.add(n); n.onended = () => live.delete(n); }
 export function stopAll() { live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
@@ -35,8 +64,13 @@ export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'p
   };
   let tail = 0.25;
   if (timbre === 'piano') {
-    const a = osc('triangle', 1, 0.7), b = osc('sine', 2, 0.22), d = osc('sine', 3, 0.08);
-    [a, b, d].forEach((x) => x.og.connect(g));
+    // Phone and laptop speakers barely reproduce anything below about 250 Hz, so low notes lean on their
+    // upper harmonics: the ear fills in the missing fundamental and still hears the right pitch.
+    const low = Math.max(0, Math.min(1, (66 - m) / 24));
+    const a = osc('triangle', 1, 0.7), b = osc('sine', 2, 0.22 + 0.4 * low), d = osc('sine', 3, 0.08 + 0.32 * low);
+    const hi = [osc('sine', 4, 0.03 + 0.22 * low), osc('sine', 5, 0.12 * low)];
+    [a, b, d, ...hi].forEach((x) => x.og.connect(g));
+    hi.forEach((x) => { x.o.start(Math.max(when, c.currentTime)); x.o.stop(Math.max(when, c.currentTime) + dur + 0.3); });
     g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vel, t0 + 0.006);
     g.gain.exponentialRampToValueAtTime(vel * 0.35, t0 + 0.35); g.gain.exponentialRampToValueAtTime(vel * 0.12, Math.max(end, t0 + 0.4));
     g.gain.exponentialRampToValueAtTime(0.0008, end + tail);
@@ -90,7 +124,10 @@ export function sfx(kind: 'ok' | 'win' | 'life') {
 export interface SeqEv { t: number; d: number; midis: number[] } // beats
 /** Schedule a sequence; returns its length in seconds. `prompt` mutes the mic while it sounds. */
 export function playSeq(evs: SeqEv[], tempo: number, timbre: Timbre = 'piano', delay = 0.05, prompt = true): number {
-  const spb = 60 / tempo, t0 = now() + delay; let end = 0;
+  // A just-started audio device can swallow the first few hundred milliseconds, so give it a moment.
+  const c = ac(), warm = c.currentTime < 0.35 ? 0.35 - c.currentTime : 0;
+  delay += warm;
+  const spb = 60 / tempo, t0 = c.currentTime + delay; let end = 0;
   for (const e of evs) {
     e.midis.forEach((m) => playNote(m, t0 + e.t * spb, Math.max(0.12, e.d * spb * 0.95), timbre, e.midis.length > 2 ? 0.45 : 0.65, prompt));
     end = Math.max(end, (e.t + e.d) * spb);

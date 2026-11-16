@@ -5,7 +5,7 @@ import { placeOut } from '../sched';
 import { Runner, RunItem } from '../ui/Runner';
 import { InputSwitch, MicBar, MidiBar } from '../ui/common';
 import { Keyboard } from '../ui/Keyboard';
-import { InputTest, Latency } from './Settings';
+import { InputTest, Latency, SoundTest } from './Settings';
 import { ac } from '../audio';
 
 const PLACE: { level: number; items: RunItem[] }[] = [
@@ -35,6 +35,8 @@ export function Onboarding() {
         <h2>How much time each day?</h2>
         <div className="seg" role="group" aria-label="Daily goal">{([5, 10, 20] as const).map((g) => <button key={g} aria-pressed={s.profile.dailyGoalMin === g} onClick={() => set((x) => { x.profile.dailyGoalMin = g; })}>{g} min</button>)}</div>
         <p className="small muted">Short and daily beats long and rare. You can change this later.</p>
+        <h2>Can you hear it?</h2>
+        <SoundTest />
       </>}
       {step === 1 && <>
         <h1>How will you answer?</h1>
