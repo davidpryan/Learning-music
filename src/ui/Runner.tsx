@@ -8,6 +8,7 @@ import { onNote } from '../input';
 import { stopAll, playSeq, sfx } from '../audio';
 import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
+import { pickFresh, forget } from '../pick';
 import { get, useS, InputMode } from '../store';
 import { Keyboard, KeyMark } from './Keyboard';
 import { Icon, InputSwitch, MicBar, MidiBar } from './common';
@@ -23,14 +24,10 @@ function makeQ(it: RunItem, idx: number, seedBase?: number): Question {
   const params = exParams(it.ex, it.preset);
   const reps = it.skillId ? get().skills[it.skillId]?.recent.length ?? 0 : 0;
   if (EX[it.ex].track === 'ear' && reps > 5) params.rot = true;
-  let best: Question | null = null;
-  for (let k = 0; k < 3; k++) {
-    const cand = EX[it.ex].gen(params, mulberry(seedBase != null ? seedBase + idx * 101 : freshSeed()));
-    if (!best) best = cand;
-    if (seedBase != null) break;
-    if (isWeakItem(it.skillId, cand.item)) { best = cand; break; }
-  }
-  return best!;
+  // Seeded runs (daily challenge, fixed stages) keep their own history so they stay the same for everyone.
+  const bucket = `${it.ex}:${JSON.stringify(it.preset)}` + (seedBase != null ? `:seed${seedBase}` : '');
+  if (seedBase != null && idx === 0) forget(bucket);
+  return pickFresh(bucket, (k) => EX[it.ex].gen(params, mulberry(seedBase != null ? seedBase + idx * 101 + k * 7 : freshSeed())), (item) => isWeakItem(it.skillId, item));
 }
 
 export function Runner(p: RunnerProps) {
