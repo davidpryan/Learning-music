@@ -29,6 +29,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const [left, setLeft] = useState(listenFirst ? 0 : scan);
   const [count, setCount] = useState(0), [cursor, setCursor] = useState<number | null>(null), [hit, setHit] = useState(false), [judge, setJudge] = useState('');
   const expRef = useRef<number[]>([]);
+  const [stalled, setStalled] = useState(false);
   const [result, setResult] = useState<null | { ok: boolean; pp: number; rp: number; colors: Record<string, string>; text: string }>(null);
   const R = useRef({ startPerf: 0, events: [] as { t: number; midi: number }[], taps: [] as number[], timers: [] as any[], live: false, lastTap: -1e9, tick: null as any });
   const lat = (src: string) => s.profile.latency[src] ?? 0;
@@ -62,8 +63,15 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
     return () => { u1(); u2(); window.removeEventListener('keydown', kd); };
   }, []);
 
-  function begin() {
+  async function begin() {
     const c = ac(); stopAll(); clear();
+    // The metronome runs on the audio clock. If audio is paused (after a call, a tab switch, a microphone change),
+    // wake it first; if it will not wake without a tap, wait for one rather than grading against a frozen clock.
+    if (c.state !== 'running') {
+      await Promise.race([c.resume().catch(() => {}), new Promise((r) => setTimeout(r, 500))]);
+      if ((c.state as string) !== 'running') { setLeft(0); setStalled(true); return; }
+    }
+    setStalled(false);
     const go = (listen: boolean) => {
       const r = R.current, t0 = c.currentTime + 0.25, clickSec = (qMs * unit) / 1000, nClicks = Math.ceil(total / unit - 1e-6);
       for (let k = 0; k < clicksPerBar + nClicks; k++) { click(t0 + k * clickSec, k % clicksPerBar === 0); if (arcade && !listen) { if (k % 2 === 0) drum(t0 + k * clickSec, 'kick'); drum(t0 + (k + 0.5) * clickSec, 'hat'); } }
@@ -120,6 +128,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
             <span className="grow" />
             {!listenFirst && left > 0 && <><span className="muted small" aria-live="polite">Starts in {left} s</span><button className="btn sm ghost" onClick={() => setLeft(0)}>Wait</button></>}
           </div>
+          {stalled && <div className="feedback bad"><div className="txt">Sound is paused<span>Tap Start to wake it up.</span></div></div>}
           <button className="btn primary big" onClick={begin}><Icon name="playtri" size={16} />{listenFirst ? 'Listen' : 'Start now'}</button>
         </div>
       )}

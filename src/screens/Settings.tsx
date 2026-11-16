@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
 import { get, set, useS, exportJson, importJson, resetAll } from '../store';
-import { ac, click, playNote } from '../audio';
-import { onTap, onNote, emitTap, calibrateGate, micState, startMic, initMidi } from '../input';
+import { ac, click, playNote, audioState } from '../audio';
+import { onTap, onNote, emitTap, calibrateGate, micState, startMic, stopMic, initMidi } from '../input';
 import { midiName } from '../music';
 import { TopBar, InputSwitch, MicBar, MidiBar, Icon } from '../ui/common';
 
@@ -33,11 +33,14 @@ export function Latency() {
   );
 }
 export function SoundTest() {
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(false), [, tick] = useState(0);
+  useEffect(() => { if (!done) return; const id = setInterval(() => tick((x) => x + 1), 500); return () => clearInterval(id); }, [done]);
+  const session = (navigator as any).audioSession?.type;
   return (
     <div className="col" style={{ gap: 6 }}>
       <button className="btn" onClick={() => { [60, 64, 67, 72].forEach((m, i) => playNote(m, ac().currentTime + 0.1 + i * 0.3, 0.5, 'piano', 0.7)); setDone(true); }}><Icon name="playtri" size={14} />Test sound</button>
-      {done && <div className="small muted">You should hear four rising notes. If not: turn the volume up; on an iPhone or iPad, flip the ring/silent switch off silent (or turn off Silent Mode in Control Centre); and check no Bluetooth speaker has taken the sound.</div>}
+      {done && <div className="small muted">You should hear four rising notes. If not: turn the volume up; on an iPhone or iPad, flip the ring/silent switch off silent (or turn off Silent Mode in Control Centre); and check no Bluetooth speaker has taken the sound. While the microphone is on, some phones play more quietly or through the earpiece: headphones fix that.</div>}
+      {done && <div className="small muted">Status: audio {audioState()}{session ? `, session ${session}` : ''}, microphone {micState.on ? 'on' : 'off'}, volume {Math.round(get().profile.settings.volume * 100)}%.</div>}
     </div>
   );
 }
@@ -56,6 +59,7 @@ export function VoiceRange() {
 }
 export function Settings() {
   const s = useS(), nav = useNav(), st = s.profile.settings;
+  useEffect(() => () => { if (get().profile.settings.input !== 'mic') stopMic(); }, []); // tests here may have turned the mic on
   const up = (f: (x: typeof st) => void) => set((x) => f(x.profile.settings));
   const [io, setIo] = useState(''), [msg, setMsg] = useState(''), [confirm, setConfirm] = useState(false);
   const file = useRef<HTMLInputElement>(null);

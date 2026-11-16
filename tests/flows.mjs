@@ -115,6 +115,46 @@ check('MusicXML import reads key, time, chords, rests and durations', xml.key ==
 await page.reload({ waitUntil: 'networkidle0' });
 const persisted = await page.evaluate(async () => { const st = await import('/src/store.ts'); await new Promise((r) => setTimeout(r, 300)); return { lessons: Object.keys(st.get().lessons).length, quest: st.get().keyQuest, boss: st.get().stars['boss:1'] }; });
 check('lessons, key claims and stars persist across a reload', persisted.lessons >= 6 && persisted.quest.includes('G') && persisted.boss === 3, JSON.stringify(persisted));
+// ---- audio keeps working through microphone on/off, including the iPhone code path ----
+{
+  const ph = await browser.newPage(); await ph.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'); await ph.setViewport({ width: 390, height: 844 });
+  const perr = []; ph.on('pageerror', (e) => perr.push(e.message));
+  await ph.goto(URL, { waitUntil: 'networkidle0' });
+  const r = await ph.evaluate(async () => {
+    const audio = await import('/src/audio.ts'), input = await import('/src/input.ts'); const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const src = new AudioContext(), osc = src.createOscillator(), dest = src.createMediaStreamDestination(); osc.frequency.value = 440; osc.connect(dest); osc.start();
+    navigator.mediaDevices.getUserMedia = async () => dest.stream;
+    const out = { ios: audio.isIOS() };
+    audio.unlockAudio(); audio.playNote(60); await wait(150); const c1 = audio.ac(); out.before = c1.state;
+    const heard = []; input.onNote((e) => heard.push(e.midi));
+    out.micOk = await input.startMic(); await wait(900); const c2 = audio.ac(); out.newContextForMic = c2 !== c1; out.duringMic = c2.state; out.heard = heard.join();
+    audio.playNote(64); await wait(100); out.playsWithMicOn = audio.audioState();
+    input.stopMic(); await wait(100); const c3 = audio.ac(); await wait(150); out.newContextAfterMic = c3 !== c2; out.afterMic = c3.state; out.micOff = !input.micState.on;
+    audio.playSeq([{ t: 0, d: 0.2, midis: [67] }], 120); await wait(100); out.final = audio.audioState();
+    return out;
+  });
+  check('audio survives turning the microphone on and off (iPhone path)', r.ios && r.before === 'running' && r.micOk && r.newContextForMic && r.duringMic === 'running' && r.heard === '69' && r.newContextAfterMic && r.afterMic === 'running' && r.micOff && r.final === 'running' && !perr.length, JSON.stringify(r) + perr.join());
+  // switching the input away from Mic releases the microphone
+  await ph.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Skip setup'))?.click()); await sleep(300);
+  const rel = await ph.evaluate(async () => { const input = await import('/src/input.ts'); const wait = (ms) => new Promise((r) => setTimeout(r, ms)); await input.startMic(); await wait(200); const on = input.micState.on; const { set } = await import('/src/store.ts'); return { on }; });
+  await ph.evaluate(() => [...document.querySelectorAll('[aria-label="Settings"]')][0].click()); await sleep(300);
+  await ph.evaluate(() => [...document.querySelectorAll('.seg[aria-label="Answer with"] button')].find((b) => b.textContent.includes('Keys')).click()); await sleep(300);
+  const off = await ph.evaluate(async () => { const input = await import('/src/input.ts'); return !input.micState.on; });
+  check('choosing Keys turns the microphone off', rel.on && off, JSON.stringify({ rel, off }));
+  // an ear question waits for a tap when audio is not running yet, instead of playing into the void
+  const pg = await browser.newPage(); await pg.setViewport({ width: 390, height: 844 }); await pg.goto(URL, { waitUntil: 'networkidle0' });
+  const tapFirst = await pg.evaluate(async () => {
+    const { set } = await import('/src/store.ts'); set((s) => { s.profile.onboarded = true; }); const audio = await import('/src/audio.ts'); const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    await wait(200); const nav = [...document.querySelectorAll('.tabbar button')].find((b) => b.textContent.includes('Practice'));
+    // navigate without real user gestures so the audio context stays unstarted or suspended
+    nav.dispatchEvent(new MouseEvent('click', { bubbles: true })); await wait(250);
+    [...document.querySelectorAll('.node')].find((b) => b.textContent.includes('Pitch comparison')).click(); await wait(250);
+    [...document.querySelectorAll('.sheet .btn.primary')].find((b) => b.textContent.includes('Start')).click(); await wait(400);
+    return { state: audio.audioState(), button: !![...document.querySelectorAll('.shell:not([hidden]) button')].find((b) => b.textContent.includes('Play the sound')) };
+  });
+  check('with audio not yet started, an ear question shows "Play the sound"', tapFirst.state !== 'running' ? tapFirst.button : true, JSON.stringify(tapFirst));
+  await ph.close(); await pg.close();
+}
 check('no console or page errors', errors.length === 0, errors.slice(0, 6).join(' | '));
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nALL PASSED');
 await browser.close(); process.exit(fails.length ? 1 : 0);

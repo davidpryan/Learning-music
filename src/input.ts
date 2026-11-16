@@ -1,5 +1,5 @@
 // One event bus for all three inputs: on-screen keyboard, microphone and MIDI.
-import { busyUntil, ac } from './audio';
+import { busyUntil, ac, setMicActive, resetAudio, isIOS } from './audio';
 import { CFG } from './config';
 
 export type Source = 'screen' | 'mic' | 'midi';
@@ -60,12 +60,15 @@ export async function startMic(): Promise<boolean> {
   if (micState.on) return true;
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+    setMicActive(true);
     micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } as any });
+    if (isIOS()) resetAudio();
     const c = ac(), src = c.createMediaStreamSource(micStream), an = c.createAnalyser();
     an.fftSize = 2048; src.connect(an);
     const buf = new Float32Array(an.fftSize);
     let cand = -1, candSince = 0, emitted = -1, lastRms = 0, lastTap = 0, quietSince = 0;
     micTimer = setInterval(() => {
+      if (c.state !== 'running') { c.resume().catch(() => {}); return; }
       an.getFloatTimeDomainData(buf);
       let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
       const rms = Math.sqrt(s / buf.length), t = performance.now();
@@ -90,14 +93,22 @@ export async function startMic(): Promise<boolean> {
       lastRms = rms; bump();
     }, 25);
     micState.on = true; micState.error = ''; bump(); return true;
-  } catch (e) {
-    micState.error = 'The microphone is not available here (permission refused or blocked by this page).'; micState.on = false; bump(); return false;
+  } catch (e: any) {
+    setMicActive(false);
+    micState.error = e?.name === 'NotAllowedError' ? 'Microphone permission was refused. Allow it in your browser\'s site settings, then try again.' : e?.name === 'NotFoundError' ? 'No microphone was found on this device.' : 'The microphone is not available here (blocked by this page or browser).';
+    micState.on = false; bump(); return false;
   }
 }
 export function stopMic() {
   if (micTimer) clearInterval(micTimer); micTimer = null;
-  micStream?.getTracks().forEach((t) => t.stop()); micStream = null; micState.on = false; micState.note = null; bump();
+  const was = micState.on || !!micStream;
+  micStream?.getTracks().forEach((t) => t.stop()); micStream = null; micState.on = false; micState.note = null; micState.level = 0;
+  setMicActive(false);
+  if (was && isIOS()) resetAudio(); // back to the normal speaker route
+  bump();
 }
+// A page in the background should not keep listening.
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden && micState.on) stopMic(); });
 /** Sample room noise for a moment and set the gate just above it. */
 export async function calibrateGate(ms = 1500): Promise<number> {
   const t0 = performance.now(); let peak = 0;

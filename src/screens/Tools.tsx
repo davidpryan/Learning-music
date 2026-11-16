@@ -4,7 +4,7 @@ import { P, midi, pname, pretty, label, key as mkKey, keyLabel, keyScale, diaton
 import { mk, Passage, parseNotes } from '../passage';
 import { Score } from '../notation';
 import { playSeq, click, now, stopAll, ac } from '../audio';
-import { micState, startMic } from '../input';
+import { micState, startMic, stopMic } from '../input';
 import { get } from '../store';
 import { Keyboard } from '../ui/Keyboard';
 import { TopBar, Circle, Icon, playPassage, useInputState } from '../ui/common';
@@ -91,6 +91,7 @@ function Metronome() {
 }
 function Tuner() {
   useInputState();
+  useEffect(() => () => { if (get().profile.settings.input !== 'mic') stopMic(); }, []);
   const n = micState.note, cents = Math.round(micState.cents);
   return (
     <div className="col center">

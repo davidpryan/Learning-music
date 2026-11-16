@@ -6,7 +6,7 @@ import { playSeq, click, now, stopAll } from '../audio';
 import { Keyboard } from './Keyboard';
 import { P, midi } from '../music';
 import type { Fig } from '../content/types';
-import { micState, midiState, onInputState, startMic, initMidi } from '../input';
+import { micState, midiState, onInputState, startMic, stopMic, initMidi } from '../input';
 import { get, set, useS, InputMode } from '../store';
 
 const PATHS: Record<string, string> = {
@@ -44,7 +44,7 @@ export const Bar = ({ v, ok }: { v: number; ok?: boolean }) => <div className={'
 /** Input switcher: Keys / Mic / MIDI (+ Choices when the question allows it). */
 export function InputSwitch({ choice }: { choice?: boolean }) {
   const s = useS(), cur = s.profile.settings.input;
-  const pick = (m: InputMode) => { set((st) => { st.profile.settings.input = m; }); if (m === 'mic') startMic().then(() => { micState.gate = get().profile.micGate; }); if (m === 'midi') initMidi(); };
+  const pick = (m: InputMode) => { set((st) => { st.profile.settings.input = m; }); if (m === 'mic') startMic().then(() => { micState.gate = get().profile.micGate; }); else stopMic(); if (m === 'midi') initMidi(); };
   const opts: [InputMode, string, string][] = [['screen', 'Keys', 'keys'], ['mic', 'Mic', 'mic'], ['midi', 'MIDI', 'midi']];
   if (choice) opts.push(['choice', 'Choices', 'list']);
   const eff = cur === 'choice' && !choice ? 'screen' : cur;

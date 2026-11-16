@@ -5,7 +5,7 @@ import { mulberry, label, fromMidi, pc } from '../music';
 import { freshSeed } from '../gen';
 import { Score } from '../notation';
 import { onNote } from '../input';
-import { stopAll, playSeq, sfx } from '../audio';
+import { stopAll, playSeq, sfx, audioState } from '../audio';
 import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
 import { pickFresh, forget } from '../pick';
@@ -34,7 +34,7 @@ export function Runner(p: RunnerProps) {
   const s = useS(), settings = s.profile.settings;
   const [i, setI] = useState(0), [tryN, setTryN] = useState(0);
   const [q, setQ] = useState<Question>(() => p.question ?? makeQ(p.items[0], 0, p.seedBase));
-  const [res, setRes] = useState<null | { ok: boolean; xp: number }>(null), [hint, setHint] = useState(false);
+  const [res, setRes] = useState<null | { ok: boolean; xp: number }>(null), [hint, setHint] = useState(false), [heard, setHeard] = useState(false);
   const R = useRef({ t0: performance.now(), correct: 0, timer: null as any, done: false });
   const item = p.items[i % p.items.length], a = q.answer;
   const isPerf = a.kind === 'rhythm' || a.kind === 'perform';
@@ -44,8 +44,11 @@ export function Runner(p: RunnerProps) {
   useEffect(() => {
     R.current.t0 = performance.now();
     if (import.meta.env.DEV) (window as any).__q = q; // test hook, stripped from production builds
-    if (q.play) { try { const d = q.play(); R.current.t0 = performance.now() + d * 1000; } catch { /* audio needs a tap first */ } }
+    setHeard(false);
+    // Autoplay only when audio is already running; otherwise the notes would pile up silently until the next tap.
+    if (q.play && audioState() === 'running') { try { const d = q.play(); R.current.t0 = performance.now() + d * 1000; setHeard(true); } catch { /* audio needs a tap first */ } }
   }, [q]);
+  const hear = () => { stopAll(); try { const d = q.play!(); if (!heard) R.current.t0 = performance.now() + d * 1000; setHeard(true); } catch { /* no audio */ } };
   useEffect(() => () => { clearTimeout(R.current.timer); stopAll(); }, []);
 
   const next = () => {
@@ -73,7 +76,7 @@ export function Runner(p: RunnerProps) {
         <div className="row">
           <span className="chip" aria-label={`Question ${i + 1} of ${p.count}`}>{i + 1} / {p.count > 900 ? '∞' : p.count}</span>
           <span className="grow" />
-          {q.play && <button className="btn sm" onClick={() => { stopAll(); q.play!(); }}><Icon name="replay" size={14} />Replay</button>}
+          {q.play && heard && <button className="btn sm" onClick={hear}><Icon name="replay" size={14} />Replay</button>}
           {!isPerf && !res && <button className="btn sm" onClick={() => setHint(true)} disabled={hint}><Icon name="hint" size={14} />Hint</button>}
           {!res && !p.auto && <button className="btn sm ghost" onClick={() => finish(false)}>{isPerf ? 'Skip' : 'Show answer'}</button>}
         </div>
@@ -85,7 +88,8 @@ export function Runner(p: RunnerProps) {
       {q.score && !isPerf && <Score spec={res && !res.ok && q.reveal ? q.reveal : q.score} scale={settings.notationScale} />}
       {!q.score && res && q.reveal && <Score spec={q.reveal} scale={settings.notationScale} />}
       {q.kb && <Keyboard lo={q.kbRange?.[0] ?? 48} hi={q.kbRange?.[1] ?? 72} marks={Object.fromEntries(q.kb.map((m) => [m, 'accent' as KeyMark]))} display short labels={false} />}
-      {q.play && p.bare && !p.noReplay && <button className="btn" onClick={() => { stopAll(); q.play!(); }}><Icon name="replay" size={14} />Hear it again</button>}
+      {q.play && !heard && <button className="btn primary big" onClick={hear}><Icon name="playtri" size={16} />Play the sound</button>}
+      {q.play && heard && p.bare && !p.noReplay && <button className="btn" onClick={hear}><Icon name="replay" size={14} />Hear it again</button>}
       {hint && !res && a.kind === 'steps' && <div className="chip accent" style={{ alignSelf: 'flex-start' }}>Hint: {a.steps.length > 1 ? 'it starts on ' : 'it includes '}{label(fromMidi(a.steps[0][0]))}</div>}
 
       {a.kind === 'steps' && !isPerf && (

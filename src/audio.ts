@@ -13,11 +13,14 @@ export function ac(): AudioContext {
     const C = (window as any).AudioContext || (window as any).webkitAudioContext;
     ctx = new C() as AudioContext;
     master = ctx.createGain(); master.gain.value = vol;
-    const comp = ctx.createDynamicsCompressor();
-    master.connect(comp); comp.connect(ctx.destination);
+    // Compress, then add make-up gain: single notes come out clearly on small speakers and chords do not clip.
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.2;
+    const makeup = ctx.createGain(); makeup.gain.value = 1.8;
+    master.connect(comp); comp.connect(makeup); makeup.connect(ctx.destination);
     metGain = ctx.createGain(); metGain.gain.value = metVol; metGain.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  // 'suspended' before the first tap; iOS also uses 'interrupted' after a call, a tab switch or a microphone change
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
   return ctx;
 }
 export const now = () => ac().currentTime;
@@ -26,7 +29,25 @@ export const now = () => ac().currentTime;
 // 1. Browsers only start audio from a tap, so every tap, click and key press makes sure the context is running.
 // 2. On iPhone and iPad, Web Audio obeys the ring/silent switch unless the page counts as media playback.
 //    Newer Safari lets us say so directly; older Safari needs a silent <audio> element playing alongside.
-let silentEl: HTMLAudioElement | null = null;
+let silentEl: HTMLAudioElement | null = null, micActive = false;
+export const isIOS = () => typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+function applySession() {
+  // 'playback' ignores the silent switch but cannot record; 'play-and-record' is needed while the microphone is on.
+  try { const s = (navigator as any).audioSession; if (s) { const want = micActive ? 'play-and-record' : 'playback'; if (s.type !== want) s.type = want; return true; } } catch { /* unsupported */ }
+  return false;
+}
+/** Tell the audio system whether the microphone is in use, so playback keeps coming out of the speaker. */
+export function setMicActive(on: boolean) { micActive = on; applySession(); }
+/**
+ * Start again with a fresh audio context. On iPhone and iPad, turning the microphone on or off changes the
+ * audio hardware underneath a running context, which can leave it silent; a new context picks up the new route.
+ */
+export function resetAudio() {
+  if (!ctx) return;
+  live.clear(); busyUntil = 0;
+  try { ctx.close().catch(() => {}); } catch { /* already closed */ }
+  ctx = null;
+}
 function silentWavUrl(): string {
   const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o: number, s: string) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
   w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
@@ -36,10 +57,8 @@ function silentWavUrl(): string {
 export function unlockAudio() {
   try {
     const c = ac(); if (c.state !== 'running') c.resume().catch(() => {});
-    const session = (navigator as any).audioSession;
-    if (session) { if (session.type !== 'playback') session.type = 'playback'; return; }
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (!iOS) return;
+    if (applySession()) return;
+    if (!isIOS() || micActive) return;
     if (!silentEl) { silentEl = new Audio(silentWavUrl()); silentEl.loop = true; silentEl.setAttribute('playsinline', ''); }
     if (silentEl.paused) silentEl.play().catch(() => {});
   } catch { /* no audio available */ }
