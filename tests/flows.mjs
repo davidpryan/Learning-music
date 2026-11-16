@@ -14,11 +14,11 @@ const text = () => page.evaluate(() => document.body.innerText.replace(/\n+/g, '
 /** Answer the question on screen. Returns ms to wait for the result. */
 async function answer(correct = true) {
   return page.evaluate(async (correct) => {
-    const q = window.__q, a = q.answer, input = await import('/src/input.ts'); const sl = (ms) => new Promise((r) => setTimeout(r, ms));
-    const btn = (re) => [...document.querySelectorAll('button')].find((b) => re.test(b.textContent) && !b.disabled);
-    if (a.kind === 'slots' || (a.kind === 'steps' && document.querySelector('.choices'))) {
+    const q = window.__q, a = q.answer, input = await import('/src/input.ts'); const sl = (ms) => new Promise((r) => setTimeout(r, ms)); const root = document.querySelector('.shell:not([hidden])');
+    const btn = (re) => [...root.querySelectorAll('button')].find((b) => re.test(b.textContent) && !b.disabled);
+    if (a.kind === 'slots' || (a.kind === 'steps' && root.querySelector('.choices'))) {
       const slots = a.kind === 'slots' ? a.slots : a.alt;
-      for (const s of slots) { const grp = [...document.querySelectorAll('.choices')].find((g) => g.getAttribute('aria-label') === s.label); const want = correct ? s.value : s.choices.find((c) => c !== s.value); [...grp.querySelectorAll('.choice')].find((b) => b.textContent.trim() === want).click(); await sl(25); }
+      for (const s of slots) { const grp = [...root.querySelectorAll('.choices')].find((g) => g.getAttribute('aria-label') === s.label); const want = correct ? s.value : s.choices.find((c) => c !== s.value); [...grp.querySelectorAll('.choice')].find((b) => b.textContent.trim() === want).click(); await sl(25); }
       btn(/^Check$/)?.click(); return 100;
     }
     if (a.kind === 'steps') {
@@ -26,7 +26,7 @@ async function answer(correct = true) {
       return 100;
     }
     const { onsets, totalBeats } = await import('/src/passage.ts');
-    const p = a.kind === 'perform' ? a.expect ?? a.passage : a.passage, tempo = +document.querySelector('.chip.accent').textContent.replace(/\D/g, '');
+    const p = a.kind === 'perform' ? a.expect ?? a.passage : a.passage, tempo = +[...root.querySelectorAll('.chip.accent')].find((c) => /bpm/.test(c.textContent)).textContent.replace(/\D/g, '');
     const unit = p.time[1] === 8 ? 1.5 : 1, qMs = 60000 / tempo / unit, barMs = ((p.time[0] * 4) / p.time[1]) * qMs, total = totalBeats(a.passage.staves[0].notes) * qMs;
     const listen = a.kind === 'rhythm' && !a.visual, t0 = performance.now(); btn(/Start now|Listen/).click();
     const start = (listen ? 250 + barMs + total + 350 : 0) + 250 + barMs;
@@ -90,9 +90,9 @@ check('Theory Boss is beaten with 3 lives left', await has('Boss defeated') && a
 await clickText('Staff Runner', '.node'); await clickText('Bronze'); await sleep(1800);
 const run = await page.evaluate(async () => { const input = await import('/src/input.ts'); const lab = document.querySelector('.runner-field').getAttribute('aria-label'); const m = /([A-G])(\d)/.exec(lab); input.emitNote(12 * (+m[2] + 1) + { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]], 'screen'); await new Promise((r) => setTimeout(r, 250)); return document.querySelector('.topbar .chip').textContent; });
 check('Staff Runner scores a hit', /· 1$/.test(run), run); await back(); await back();
-await clickText('Rhythm Tap', '.node'); await clickText('1', '.grid3 button'); await sleep(300); w = await answer(true); await sleep(w + 1700);
+await clickText('Rhythm Tap', '.node'); await clickText('1', '.grid-stage button'); await sleep(300); w = await answer(true); await sleep(w + 1700);
 check('Rhythm Tap awards stars for a clean stage', await has('Stage clear'), await text()); await clickText('Stages'); await back();
-await clickText('Open Road', '.node'); await clickText('Bronze'); await sleep(300); w = await answer(true); await sleep(w + 1900);
+await clickText('Open Road', '.node'); await clickText('Stage 1'); await sleep(300); w = await answer(true); await sleep(w + 1900);
 check('Open Road extends the run after a pass', await has('Run of 1'), await text()); await back(); await back();
 await clickText('Echo', '.node'); await clickText('Start'); await sleep(300); await answer(true); await sleep(1100); await answer(true); await sleep(1100);
 check('Echo grows the melody each round', await has('Echo these 4 notes'), await text()); await back();
@@ -100,9 +100,9 @@ await clickText('Degree Dash', '.node'); await clickText('Bronze'); await page.e
 for (let i = 0; i < 3; i++) { await answer(true); await sleep(900); }
 check('Degree Dash scores with choice buttons', /Score [1-9]/.test(await page.evaluate(() => [...document.querySelectorAll('.chip.accent')].map((c) => c.textContent).join(' '))), await text()); await back(); await back();
 await page.evaluate(async () => { const { set } = await import('/src/store.ts'); set((s) => { s.profile.settings.input = 'screen'; }); });
-await clickText('Progression Detective', '.node'); await clickText('Case 1'); await clickText('Listen'); await sleep(200);
+await clickText('Progression Detective', '.node'); await clickText('1', '.grid-stage button'); await clickText('Listen'); await sleep(200);
 await page.evaluate(() => { const q = window.__q; });
-const det = await page.evaluate(async () => { const { EX, exParams } = await import('/src/exercises.ts'); const { mulberry } = await import('/src/music.ts'); const q = EX.E9.gen(exParams('E9', { keys: ['C'], pool: ['I', 'IV', 'V'], len: 4, style: 'band', tempo: 102 }), mulberry(104729)); for (const s of q.answer.alt) { const grp = [...document.querySelectorAll('.choices')].find((g) => g.getAttribute('aria-label') === s.label); [...grp.querySelectorAll('.choice')].find((b) => b.textContent.trim() === s.value).click(); await new Promise((r) => setTimeout(r, 40)); } await new Promise((r) => setTimeout(r, 100)); [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Check').click(); await new Promise((r) => setTimeout(r, 200)); return document.body.innerText.includes('Case solved') && document.querySelectorAll('.stars span:not(.off)').length; });
+const det = await page.evaluate(async () => { const { EX, exParams } = await import('/src/exercises.ts'); const { mulberry } = await import('/src/music.ts'); const q = EX.E9.gen(exParams('E9', { keys: ['C'], pool: ['I', 'IV', 'V'], len: 4, style: 'band', tempo: 102 }), mulberry(104729)); for (const s of q.answer.alt) { const grp = [...root.querySelectorAll('.choices')].find((g) => g.getAttribute('aria-label') === s.label); [...grp.querySelectorAll('.choice')].find((b) => b.textContent.trim() === s.value).click(); await new Promise((r) => setTimeout(r, 40)); } await new Promise((r) => setTimeout(r, 100)); [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Check').click(); await new Promise((r) => setTimeout(r, 200)); return document.body.innerText.includes('Case solved') && document.querySelectorAll('.stars span:not(.off)').length; });
 check('Progression Detective solves a case for 3 stars', det === 3, String(det)); await clickText('Cases'); await back();
 // ---- session, microphone, data ----
 await clickText('Home', '.tabbar button'); await clickText("Start today's session"); check('the daily session opens on a review or the next lesson', await has('Step 1 of') || await has('lesson'), await text()); await back();

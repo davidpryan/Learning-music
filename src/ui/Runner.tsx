@@ -5,7 +5,7 @@ import { mulberry, label, fromMidi, pc } from '../music';
 import { freshSeed } from '../gen';
 import { Score } from '../notation';
 import { onNote } from '../input';
-import { stopAll, playSeq } from '../audio';
+import { stopAll, playSeq, sfx } from '../audio';
 import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
 import { get, useS, InputMode } from '../store';
@@ -16,7 +16,7 @@ import { Performer, PerfExtra } from './Perform';
 export interface RunItem { ex: string; preset: Record<string, any>; skillId?: string }
 export interface RunnerProps {
   items: RunItem[]; count: number; ctx: string; auto?: boolean; combo?: number; seedBase?: number; scan?: number; tempoOverride?: number;
-  onAnswer?: (ok: boolean, q: Question, x?: PerfExtra) => void; onDone: (r: { correct: number; total: number }) => void; bare?: boolean; question?: Question; noReplay?: boolean;
+  onAnswer?: (ok: boolean, q: Question, x?: PerfExtra) => void; onDone: (r: { correct: number; total: number }) => void; bare?: boolean; question?: Question; noReplay?: boolean; arcade?: boolean;
 }
 
 function makeQ(it: RunItem, idx: number, seedBase?: number): Question {
@@ -37,7 +37,7 @@ export function Runner(p: RunnerProps) {
   const s = useS(), settings = s.profile.settings;
   const [i, setI] = useState(0), [tryN, setTryN] = useState(0);
   const [q, setQ] = useState<Question>(() => p.question ?? makeQ(p.items[0], 0, p.seedBase));
-  const [res, setRes] = useState<null | { ok: boolean }>(null), [hint, setHint] = useState(false);
+  const [res, setRes] = useState<null | { ok: boolean; xp: number }>(null), [hint, setHint] = useState(false);
   const R = useRef({ t0: performance.now(), correct: 0, timer: null as any, done: false });
   const item = p.items[i % p.items.length], a = q.answer;
   const isPerf = a.kind === 'rhythm' || a.kind === 'perform';
@@ -59,11 +59,12 @@ export function Runner(p: RunnerProps) {
   const finish = (ok: boolean, used: string = mode, x?: PerfExtra) => {
     if (res) return;
     const ms = Math.max(0, performance.now() - R.current.t0);
-    record({ skillId: item.skillId, ex: item.ex, ctx: p.ctx, correct: ok, ms, input: used, hinted: hint, pp: x?.pp, rp: x?.rp, item: q.item, combo: p.combo });
+    const xp = record({ skillId: item.skillId, ex: item.ex, ctx: p.ctx, correct: ok, ms, input: used, hinted: hint, pp: x?.pp, rp: x?.rp, item: q.item, combo: p.combo });
+    if (ok) sfx(isPerf ? 'win' : 'ok');
     if (ok) R.current.correct++;
     // a miss always sounds the right answer
     if (!ok && a.kind === 'steps') { stopAll(); try { playSeq(a.steps.map((st, k) => ({ t: k * 0.55, d: 0.55, midis: st })), 60, settings.timbre, 0.25, false); } catch { /* no audio yet */ } }
-    setRes({ ok }); p.onAnswer?.(ok, q, x);
+    setRes({ ok, xp }); p.onAnswer?.(ok, q, x);
     if (p.auto) R.current.timer = setTimeout(next, isPerf ? 1800 : ok ? 650 : 1300);
     else if (ok && !isPerf) R.current.timer = setTimeout(next, 800);
   };
@@ -102,7 +103,7 @@ export function Runner(p: RunnerProps) {
       {isPerf && (
         <>
           {!p.bare && !res && <InputSwitch />}
-          <Performer key={`p${i}-${tryN}`} a={a as any} q={q} mode={mode} scan={p.scan ?? (p.bare && p.ctx === 'lesson' ? 0 : undefined)} tempoOverride={p.tempoOverride} onFinish={(ok, x) => finish(ok, mode, x)} />
+          <Performer key={`p${i}-${tryN}`} a={a as any} q={q} mode={mode} scan={p.scan ?? (p.bare && p.ctx === 'lesson' ? 0 : undefined)} tempoOverride={p.tempoOverride} arcade={p.arcade} onFinish={(ok, x) => finish(ok, mode, x)} />
         </>
       )}
 
@@ -110,6 +111,7 @@ export function Runner(p: RunnerProps) {
         <div className={'feedback ' + (res.ok ? 'ok' : 'bad')} role="status" aria-live="polite">
           <Icon name={res.ok ? 'check' : 'x'} />
           <div className="txt">{isPerf ? (res.ok ? 'Passed' : 'Not yet: aim for 80% on both') : res.ok ? 'Correct' : 'Not quite'}{!isPerf && <span>{q.explain}</span>}</div>
+          {res.ok && res.xp > 0 && <span className="chip ok" aria-label={`${res.xp} experience points`}>+{res.xp} XP</span>}
         </div>
       )}
       {res && !p.auto && (!res.ok || isPerf) && (

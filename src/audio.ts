@@ -3,7 +3,7 @@ import { freq } from './music';
 
 export type Timbre = 'piano' | 'guitar' | 'strings' | 'sine';
 let ctx: AudioContext | null = null, master: GainNode, metGain: GainNode;
-let vol = 0.8, metVol = 0.7;
+let vol = 0.8, metVol = 0.7, sfxOn = true;
 const live = new Set<AudioScheduledSourceNode>();
 /** Audio-clock time until which the app itself is sounding a prompt (the mic ignores input until then). */
 export let busyUntil = 0;
@@ -21,7 +21,7 @@ export function ac(): AudioContext {
   return ctx;
 }
 export const now = () => ac().currentTime;
-export function setVolumes(v: number, m: number) { vol = v; metVol = m; if (ctx) { master.gain.value = v; metGain.gain.value = m; } }
+export function setVolumes(v: number, m: number, fx = true) { vol = v; metVol = m; sfxOn = fx; if (ctx) { master.gain.value = v; metGain.gain.value = m; } }
 function track(n: AudioScheduledSourceNode) { live.add(n); n.onended = () => live.delete(n); }
 export function stopAll() { live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
 
@@ -76,6 +76,16 @@ export function drum(when: number, kind: 'kick' | 'hat') {
     g.gain.setValueAtTime(0.08, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.04);
     o.connect(hp); hp.connect(g); track(o); o.start(when); o.stop(when + 0.05);
   }
+}
+/** Short interface sounds: a right answer, a win, a lost life. Off when sound effects are disabled. */
+export function sfx(kind: 'ok' | 'win' | 'life') {
+  if (!sfxOn) return;
+  try {
+    const t = now() + 0.01;
+    if (kind === 'ok') { playNote(88, t, 0.07, 'sine', 0.22); playNote(93, t + 0.07, 0.1, 'sine', 0.22); }
+    else if (kind === 'win') [72, 76, 79, 84].forEach((m, i) => playNote(m, t + i * 0.09, 0.14, 'sine', 0.28));
+    else { playNote(52, t, 0.16, 'sine', 0.4); playNote(47, t + 0.14, 0.22, 'sine', 0.4); }
+  } catch { /* audio not ready */ }
 }
 export interface SeqEv { t: number; d: number; midis: number[] } // beats
 /** Schedule a sequence; returns its length in seconds. `prompt` mutes the mic while it sounds. */

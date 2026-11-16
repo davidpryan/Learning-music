@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Nav, Route } from './nav';
-import { load, useS, get } from './store';
-import { addMinutes, takeNewBadges } from './sched';
+import { load, useS, get, dayKey } from './store';
+import { addMinutes, takeNewBadges, playerLevel, playerTitle, liveStreak } from './sched';
+import { sfx } from './audio';
 import { micState } from './input';
 import { Icon } from './ui/common';
 import { Home } from './screens/Home';
@@ -35,7 +36,16 @@ export default function App() {
   }, []);
   const toastTimer = useRef<any>(null);
   const showToast = (t: string, ms = 3500) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), ms); };
-  useEffect(() => { const b = takeNewBadges(); if (b.length) showToast(`Badge earned: ${b.join(', ')}`); }, [s]);
+  const seen = useRef({ level: 0, goal: false, init: false });
+  useEffect(() => {
+    const b = takeNewBadges(), lv = playerLevel(s.profile.xp), goal = !!s.days[dayKey()]?.goal, was = seen.current;
+    if (ready && was.init) {
+      if (b.length) showToast(`Badge earned: ${b.slice(0, 2).join(', ')}${b.length > 2 ? ` and ${b.length - 2} more` : ''}`);
+      else if (lv > was.level) { showToast(`Level ${lv} reached · ${playerTitle(s.profile.xp)}`); sfx('win'); }
+      else if (goal && !was.goal) showToast(`Daily goal met · ${liveStreak(s)} day streak`);
+    }
+    seen.current = { level: lv, goal, init: ready };
+  }, [s, ready]);
   const top = stack[stack.length - 1].r;
   useEffect(() => { if (isTab(top.n)) { try { if (location.hash !== '#' + top.n) history.replaceState(null, '', '#' + top.n); } catch { /* sandboxed */ } } window.scrollTo(0, 0); }, [top]);
   // The phone's Back button and the browser's Back both step back through screens instead of leaving the app.
@@ -69,7 +79,7 @@ export default function App() {
       case 'tools': return <Tools />; case 'settings': return <Settings />; case 'session': return <Session />;
       case 'lesson': return <LessonView id={r.id} onExit={nav.back} />;
       case 'run': return <Run r={r} />;
-      case 'timed': return <Timed title={r.title} ex={r.ex} preset={r.preset} highKey={r.highKey} onExit={nav.back} />;
+      case 'timed': return <Timed title={r.title} ex={r.ex} preset={r.preset} highKey={r.highKey} skillId={r.skillId} onExit={nav.back} />;
       case 'game': return <GameScreen id={r.id} daily={r.daily} onExit={nav.back} />;
       default: return <Home />;
     }

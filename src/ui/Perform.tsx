@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Answer, Question } from '../exercises';
 import { Score } from '../notation';
 import { barLen, onsets, totalBeats } from '../passage';
-import { ac, click, playNote, stopAll } from '../audio';
+import { ac, click, playNote, stopAll, drum } from '../audio';
 import { onNote, onTap, emitTap } from '../input';
 import { gradePerform, gradeRhythm, tolMs, MARK_COLOR, Mark } from '../grade';
 import { CFG } from '../config';
@@ -16,7 +16,7 @@ export interface PerfExtra { pp: number; rp: number; perfect?: number; good?: nu
 type PA = Extract<Answer, { kind: 'rhythm' | 'perform' }>;
 const RANK: Mark[] = ['ok', 'early', 'late', 'wrong', 'miss'];
 
-export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoOverride }: { a: PA; q: Question; mode: InputMode; onFinish: (ok: boolean, x: PerfExtra) => void; scan?: number; tempoOverride?: number }) {
+export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoOverride, arcade }: { a: PA; q: Question; mode: InputMode; onFinish: (ok: boolean, x: PerfExtra) => void; scan?: number; tempoOverride?: number; arcade?: boolean }) {
   const s = useS(), st = s.profile.settings;
   const passage = a.passage, expectP = a.kind === 'perform' ? a.expect ?? passage : passage;
   const unit = passage.time[1] === 8 ? 1.5 : 1, bar = barLen(passage.time), clicksPerBar = Math.max(1, Math.round(bar / unit));
@@ -27,11 +27,14 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const listenFirst = a.kind === 'rhythm' && !a.visual;
   const [phase, setPhase] = useState<'scan' | 'listen' | 'countin' | 'play' | 'result'>('scan');
   const [left, setLeft] = useState(listenFirst ? 0 : scan);
-  const [count, setCount] = useState(0), [cursor, setCursor] = useState<number | null>(null), [hit, setHit] = useState(false);
+  const [count, setCount] = useState(0), [cursor, setCursor] = useState<number | null>(null), [hit, setHit] = useState(false), [judge, setJudge] = useState('');
+  const expRef = useRef<number[]>([]);
   const [result, setResult] = useState<null | { ok: boolean; pp: number; rp: number; colors: Record<string, string>; text: string }>(null);
   const R = useRef({ startPerf: 0, events: [] as { t: number; midi: number }[], taps: [] as number[], timers: [] as any[], live: false, lastTap: -1e9, tick: null as any });
   const lat = (src: string) => s.profile.latency[src] ?? 0;
   const modeRef = useRef(mode); modeRef.current = mode;
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (phase === 'play' && cursor != null) root.current?.querySelector('.score-cursor')?.scrollIntoView({ block: 'center', behavior: st.reducedMotion ? 'auto' : 'smooth' }); }, [cursor, phase]);
 
   const clear = () => { R.current.timers.forEach(clearTimeout); R.current.timers = []; if (R.current.tick) clearInterval(R.current.tick); R.current.live = false; };
   useEffect(() => () => { clear(); stopAll(); }, []);
@@ -51,6 +54,8 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
       if (e.source === 'mic' && modeRef.current !== 'mic') return;
       const t = e.t - r.startPerf - lat(e.source); if (t - r.lastTap < 70) return;
       r.lastTap = t; r.taps.push(t); setHit(true); setTimeout(() => setHit(false), 90);
+      const d = expRef.current.reduce((best, x) => (Math.abs(t - x) < Math.abs(best) ? t - x : best), 1e9), ad = Math.abs(d);
+      setJudge(ad <= CFG.perfectMs ? 'Perfect' : ad <= CFG.goodMs ? 'Good' : d < 0 ? 'Early' : 'Late');
     });
     const kd = (e: KeyboardEvent) => { if (a.kind !== 'rhythm' || !R.current.live || e.repeat) return; if (e.key === ' ' || e.key.length === 1) { e.preventDefault(); emitTap('screen'); } };
     window.addEventListener('keydown', kd);
@@ -61,7 +66,8 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
     const c = ac(); stopAll(); clear();
     const go = (listen: boolean) => {
       const r = R.current, t0 = c.currentTime + 0.25, clickSec = (qMs * unit) / 1000, nClicks = Math.ceil(total / unit - 1e-6);
-      for (let k = 0; k < clicksPerBar + nClicks; k++) click(t0 + k * clickSec, k % clicksPerBar === 0);
+      for (let k = 0; k < clicksPerBar + nClicks; k++) { click(t0 + k * clickSec, k % clicksPerBar === 0); if (arcade && !listen) { if (k % 2 === 0) drum(t0 + k * clickSec, 'kick'); drum(t0 + (k + 0.5) * clickSec, 'hat'); } }
+      expRef.current = onsets(passage).map((o) => o.t * qMs); setJudge('');
       const startA = t0 + clicksPerBar * clickSec, lead = (startA - c.currentTime) * 1000;
       if (listen) {
         onsets(passage).forEach((o) => playNote(79, startA + (o.t * qMs) / 1000, 0.14, 'sine', 0.8, true));
@@ -103,7 +109,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const showScore = a.kind === 'perform' || a.visual || phase === 'result';
   const range = q.kbRange ?? [60, 84];
   return (
-    <div className="col">
+    <div className="col" ref={root}>
       {showScore && <Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={st.notationScale} />}
       {phase === 'scan' && (
         <div className="col">
@@ -119,11 +125,12 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
       )}
       {phase === 'listen' && <div className="card center bold" aria-live="polite">Listen…</div>}
       {phase === 'countin' && <div className="count" aria-live="assertive">{count || 1}</div>}
+      {phase === 'play' && arcade && a.kind === 'rhythm' && <div className="center bold" style={{ fontSize: 22, minHeight: 30, color: judge === 'Perfect' ? 'var(--ok)' : judge === 'Good' ? 'var(--accent)' : 'var(--bad)' }} aria-live="off">{judge}</div>}
       {phase === 'scan' && a.kind === 'perform' && mode === 'screen' && <><div className="small muted">Find your starting position. Nothing counts until the count-in ends.</div><Keyboard lo={range[0]} hi={range[1]} /></>}
-      {phase === 'scan' && a.kind === 'perform' && mode === 'mic' && <MicBar />}
+      {phase === 'scan' && a.kind === 'perform' && mode === 'mic' && <>{expectP.staves.length > 1 || onsets(expectP).some((o) => o.midis.length > 1) ? <div className="feedback bad"><div className="txt">The microphone hears one note at a time<span>This passage has notes sounding together. Switch to Keys or MIDI to be graded fairly.</span></div></div> : null}<MicBar /></>}
       {phase === 'scan' && a.kind === 'perform' && mode === 'midi' && <MidiBar />}
       {(phase === 'play' || phase === 'countin') && (
-        <div className="col">
+        <div className="col dock">
           {a.kind === 'rhythm' ? (mode === 'mic' ? <MicBar /> : <button className={'tappad' + (hit ? ' hit' : '')} onPointerDown={(e) => { e.preventDefault(); emitTap('screen'); }}>Tap here, or press any key</button>)
             : mode === 'mic' ? <MicBar /> : mode === 'midi' ? <MidiBar /> : <Keyboard lo={range[0]} hi={range[1]} />}
           <button className="btn ghost sm" onClick={() => { clear(); stopAll(); setPhase('scan'); setLeft(0); }}><Icon name="stop" size={14} />Stop</button>

@@ -17,7 +17,7 @@ export function drawScore(el: HTMLElement, spec: ScoreSpec, scale = 1): Box[] {
   const len = ps.free ? 1e9 : barLen(ps.time);
   const ms = ps.staves.map((st) => measures(st.notes, len));
   const nM = Math.max(...ms.map((m) => m.length));
-  const perLine = ps.free ? 1 : spec.perLine ?? (W < 520 ? 2 : W < 820 ? 3 : 4);
+  const perLine = ps.free ? 1 : spec.perLine ?? (W < 520 ? 2 : 4);
   const lines = Math.ceil(nM / perLine);
   const staffGap = 92, sysH = nS * staffGap + 28;
   const renderer = new Renderer(el as HTMLDivElement, Renderer.Backends.SVG);
@@ -30,7 +30,7 @@ export function drawScore(el: HTMLElement, spec: ScoreSpec, scale = 1): Box[] {
   for (let line = 0; line < lines; line++) {
     const first = line * perLine, count = Math.min(perLine, nM - first);
     const extra = 38 + Math.abs(k.acc) * 11 + (line === 0 && showTime ? 26 : 0);
-    let mw = (W - 12 - extra) / count;
+    let mw = (W - 12 - extra) / (lines > 1 ? perLine : count);
     let x = 6;
     if (ps.free) {
       const n = ps.staves[0].notes.length;

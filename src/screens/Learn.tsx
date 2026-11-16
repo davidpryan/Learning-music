@@ -52,6 +52,7 @@ export function Learn() {
                 <div key={k.id} className="row card line" style={{ padding: 10 }}>
                   <div className="grow"><b>{k.title}</b><div className="small muted">{status === 'locked' ? 'Pass the lesson to unlock' : `${status} · ${n ? acc + '% of last ' + n : 'not practised yet'}`}</div></div>
                   <button className="btn sm" disabled={!ks} onClick={() => { setOpen(null); nav.go({ n: 'run', title: k.title, sub: 'Skill practice', items: [{ ex: k.ex, preset: k.preset, skillId: k.id }], count: PERFORM_EX.includes(k.ex) ? 3 : 10, ctx: 'practice' }); }}>Practise</button>
+                  {!PERFORM_EX.includes(k.ex) && <button className="btn sm" disabled={!ks} aria-label={`60-second sprint: ${k.title}`} onClick={() => { setOpen(null); nav.go({ n: 'timed', title: k.title, ex: k.ex, preset: k.preset, highKey: 'sprint:' + k.id, skillId: k.id }); }}>Sprint{s.highs['sprint:' + k.id] ? ` · ${s.highs['sprint:' + k.id]}` : ''}</button>}
                 </div>
               );
             })}

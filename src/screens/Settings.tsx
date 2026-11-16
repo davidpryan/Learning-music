@@ -67,6 +67,7 @@ export function Settings() {
       <section className="card line col"><h2>Sound</h2>
         <label className="field">Instrument<select value={st.timbre} onChange={(e) => { up((x) => { x.timbre = e.target.value as any; }); playNote(60, undefined, 0.8, e.target.value as any); }}><option value="piano">Piano</option><option value="guitar">Guitar</option><option value="strings">Strings</option><option value="sine">Pure tone</option></select></label>
         <label className="field">Volume<input type="range" min={0} max={1} step={0.05} value={st.volume} onChange={(e) => up((x) => { x.volume = +e.target.value; })} /></label>
+        <div className="checks"><label><input type="checkbox" checked={st.sfx} onChange={(e) => up((x) => { x.sfx = e.target.checked; })} />Sound effects for right answers and games</label></div>
         <label className="field">Metronome volume<input type="range" min={0} max={1} step={0.05} value={st.metVolume} onChange={(e) => up((x) => { x.metVolume = +e.target.value; })} /></label>
       </section>
       <section className="card line col"><h2>Notation and display</h2>

@@ -94,6 +94,9 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 32px
 .choice.right { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); } .choice.wrong { background: var(--bad-tint); border-color: var(--bad); color: var(--bad); } .choice.gone { opacity: 0.3; }
 .tappad { width: 100%; min-height: 150px; border-radius: 16px; border: 2px dashed var(--line2); background: var(--surface); font-size: 18px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tappad:active, .tappad.hit { background: var(--accent-tint); border-color: var(--accent); }
+.dock { position: sticky; bottom: 0; z-index: 3; background: var(--ground); padding: 8px 0 6px; box-shadow: 0 -8px 12px -8px rgba(0, 0, 0, 0.12); }
+.grid-stage { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+.grid-stage .card.tap { padding: 8px 4px; font-size: 13px; }
 .micbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface); font-size: 13px; }
 .meter { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; } .meter > i { display: block; height: 100%; background: var(--accent); }
 .bigstat { font-size: 30px; font-weight: 700; line-height: 1; } .count { font-size: 64px; font-weight: 700; text-align: center; line-height: 1; }
@@ -101,7 +104,7 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 32px
 .sheet-bg { position: fixed; inset: 0; background: rgba(10, 14, 22, 0.45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
 .sheet { background: var(--ground); width: 100%; max-width: 640px; max-height: 88vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 16px 16px 28px; }
 @media (min-width: 700px) { .sheet-bg { align-items: center; } .sheet { border-radius: 18px; } }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); top: 62px; z-index: 30; text-align: center; background: var(--ink); color: var(--ground); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; max-width: 90vw; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: 62px; z-index: 30; text-align: center; background: var(--ink); color: var(--ground); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; max-width: min(90vw, 420px); border-radius: 16px; pointer-events: none; }
 .level-h { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 6px; }
 .node { width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; border: 1px solid var(--line); border-radius: 12px; background: var(--ground); margin-bottom: 6px; }
 .node .ico { width: 28px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: var(--surface); color: var(--muted); flex: 0 0 auto; font-size: 11px; font-weight: 700; }

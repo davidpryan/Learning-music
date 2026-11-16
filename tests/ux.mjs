@@ -90,6 +90,28 @@ check('dark theme applies', await page.evaluate(() => document.documentElement.d
 await clickText('', '.topbar .iconbtn'); await sleep(450); await clickText('Practice', '.tabbar button'); await clickText('Chord identification', '.node'); await clickText('Start', '.sheet .btn.primary'); await sleep(300); await shot('11-dark-exercise');
 await clickText('', '.topbar .iconbtn'); await sleep(450); await clickText('Progress', '.tabbar button'); await sleep(200); await shot('12-progress-dark');
 await clickText('Play', '.tabbar button'); await shot('13-play-dark');
+// ---- games: modes, stars, seeded daily challenge and its history ----
+await clickText('', '.shell:not([hidden]) .topbar .iconbtn'); await sleep(300);
+await page.evaluate(async () => { const st = await import('/src/store.ts'); st.set((s) => { s.profile.settings.theme = 'light'; s.profile.settings.input = 'screen'; }); });
+await clickText('Play', '.tabbar button'); await clickText('Degree Dash', '.node'); await clickText('Chord colour'); 
+check('Degree Dash has modes for intervals, chord colour and function', await has('A chord sounds. Name its quality.') && !(await page.evaluate(() => !!document.querySelector('.shell:not([hidden]) main > .seg[aria-label="Answer with"]'))));
+await clickText('Bronze'); await clickText('Start'); await sleep(300);
+for (let i = 0; i < 11; i++) { await answer(true); await sleep(820); }
+const dash = await page.evaluate(() => [...document.querySelectorAll('.shell:not([hidden]) .chip')].map((c) => c.textContent).join(' '));
+check('combo climbs to x5 and the score reaches a star threshold', /Score (4[1-9]0|[5-9]\d0)/.test(dash) && /×5/.test(dash), dash);
+await page.evaluate(async () => { const { set } = await import('/src/store.ts'); }); 
+await clickText('', '.shell:not([hidden]) .topbar .iconbtn'); await sleep(400); await clickText('', '.shell:not([hidden]) .topbar .iconbtn'); await sleep(400);
+await clickText('Chord Builder Rush', '.node'); await clickText('Keys', '.seg[aria-label="Mode"] button'); await clickText('Bronze'); await clickText('Start'); await sleep(300); await answer(true); await sleep(700);
+check('Chord Builder Rush has a key-signature mode', await has('Score 10') && await has('key has this signature'), await text());
+await clickText('', '.shell:not([hidden]) .topbar .iconbtn'); await sleep(400); await clickText('', '.shell:not([hidden]) .topbar .iconbtn'); await sleep(400);
+// daily challenge: same questions on the same day, logged once finished
+const seeded = await page.evaluate(async () => { const { EX, exParams } = await import('/src/exercises.ts'); const { mulberry } = await import('/src/music.ts'); const g = await import('/src/games/games.tsx'); const d = g.dailyChallenge(); const a = EX.T10.gen(exParams('T10'), mulberry(d.seed)).prompt, b = EX.T10.gen(exParams('T10'), mulberry(d.seed)).prompt; return { same: a === b, id: d.id }; });
+check('the daily challenge is seeded from the date', seeded.same, JSON.stringify(seeded));
+await page.evaluate(async () => { const { saveStars } = await import('/src/sched.ts'); saveStars('runner:0', 2); saveStars('road:1', 3); saveStars('echo:0', 1); }); await sleep(200);
+check('the Play screen totals stars for every game', await has('★ 2/9') && await has('★ 3/15') && await has('★ 1/3'), await text());
+await clickText('Echo', '.node'); await clickText('Start'); await sleep(300); await answer(true); await sleep(1000); await answer(true); await sleep(1000); await answer(true); await sleep(1000); await answer(false); await sleep(1800);
+check('Echo ends with stars for the longest melody', await has('Echo over') && await has('4 notes echoed') && (await page.evaluate(() => document.querySelectorAll('.shell:not([hidden]) main .stars span:not(.off)').length)) === 1, await text());
+await clickText('Done'); await sleep(400);
 check('no console or page errors', errors.length === 0, errors.slice(0, 6).join(' | '));
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nALL PASSED');
 await browser.close(); process.exit(fails.length ? 1 : 0);

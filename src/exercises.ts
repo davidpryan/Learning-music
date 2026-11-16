@@ -318,7 +318,7 @@ def({
   params: [{ key: 'level', label: 'Level', type: 'select', options: [[1, 'Steps, C to G'], [2, 'Thirds, one octave'], [4, 'Leaps to a fifth']] }, { key: 'key', label: 'Key', type: 'select', options: [['C', 'C major'], ['G', 'G major'], ['F', 'F major'], ['D', 'D major']] }],
   defaults: { level: 1, key: 'C' },
   gen(p, r) {
-    const passage = genPhrase(p.level, r, { mode: p.level === 4 ? 'five' : 'rh', hand: 'rh', bars: 2, key: p.level === 1 ? 'C' : p.key, time: [4, 4] });
+    const passage = genPhrase(p.level, r, { mode: p.level === 4 ? 'five' : 'rh', hand: 'rh', bars: 4, key: p.level === 1 ? 'C' : p.key, time: [4, 4] });
     const os = onsets(passage), k = key(passage.key);
     return {
       prompt: 'Sing this phrase', sub: 'You will hear the key and your first note. Any octave is fine.', score: { passage }, kbRange: kbFor(os.flatMap((o) => o.midis)),
@@ -483,5 +483,8 @@ def({
   },
 });
 export const EX_LIST = Object.values(EX);
+/** How an exercise is answered: 'choices' only, 'play' only, or 'either' (play it or pick from choices). */
+export const answerStyle = (id: string): 'choices' | 'play' | 'either' =>
+  ['T2', 'T3', 'T4', 'T5', 'T6', 'T9', 'T11', 'E1', 'E4', 'E5'].includes(id) ? 'choices' : ['T1', 'E3', 'E7', 'E8', 'E9'].includes(id) ? 'either' : 'play';
 export const exParams = (id: string, preset: Record<string, any> = {}) => ({ ...EX[id].defaults, ...preset });
 export { LEVELS, shuffle };

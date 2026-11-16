@@ -9,7 +9,7 @@ No account, no server, no subscription: it is a static site, and your progress i
 - **27 exercises** (12 theory and recognition, 6 reading, 9 ear), each usable in lessons, the daily session, free practice with every parameter exposed, and challenge modes.
 - **Three inputs**, interchangeable at any time: an on-screen keyboard (multi-touch, plus computer keys), a microphone (one note at a time, sung or played), and a MIDI keyboard.
 - **Reading at tempo**: a seeded phrase generator with 8 levels, a metronome and count-in, and pitch and rhythm graded separately and marked on the score.
-- **Nine games** that train the same skills and feed the same skill records, with XP, stars, streaks, badges and a daily challenge.
+- **Nine games** that train the same skills and feed the same skill records, with XP, stars, streaks, badges and a date-seeded daily challenge. The two timed games each have four modes (chords, intervals, keys, numerals; degrees, intervals, chord colour, function), and any quick-answer skill can be run as a 60-second sprint.
 - **Spaced repetition** (FSRS) decides what to review; a daily session is built for you.
 - **Tools**: circle of fifths, scale and chord finder, interval calculator, staff paper with playback, metronome, tuner.
 - **Your data**: export and import as a JSON file; import your own MusicXML pieces.
