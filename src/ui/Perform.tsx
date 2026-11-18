@@ -35,7 +35,14 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const lat = (src: string) => s.profile.latency[src] ?? 0;
   const modeRef = useRef(mode); modeRef.current = mode;
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (phase === 'play' && cursor != null) root.current?.querySelector('.score-cursor')?.scrollIntoView({ block: 'center', behavior: st.reducedMotion ? 'auto' : 'smooth' }); }, [cursor, phase]);
+  // The score lives in its own scrolling box. Following the cursor scrolls that box, never the page,
+  // so the keyboard cannot move while you play, whatever the screen size.
+  useEffect(() => {
+    if (phase !== 'play' || cursor == null) return;
+    const box = root.current?.querySelector('.perf-score') as HTMLElement | null, cur = box?.querySelector('.score-cursor'); if (!box || !cur) return;
+    const b = box.getBoundingClientRect(), r = cur.getBoundingClientRect();
+    if (r.top < b.top || r.bottom > b.bottom) box.scrollTo({ top: box.scrollTop + r.top - b.top - 8, behavior: st.reducedMotion ? 'auto' : 'smooth' });
+  }, [cursor, phase]);
 
   const clear = () => { R.current.timers.forEach(clearTimeout); R.current.timers = []; if (R.current.tick) clearInterval(R.current.tick); R.current.live = false; };
   useEffect(() => () => { clear(); stopAll(); }, []);
@@ -116,33 +123,42 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   }
   const showScore = a.kind === 'perform' || a.visual || phase === 'result';
   const range = q.kbRange ?? [60, 84];
+  const live = phase === 'play' || phase === 'countin';
+  const chordal = a.kind === 'perform' && (expectP.staves.length > 1 || onsets(expectP).some((o) => o.midis.length > 1));
   return (
     <div className="col" ref={root}>
-      {showScore && <Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={st.notationScale} />}
-      {phase === 'scan' && (
-        <div className="col">
-          <div className="row">
-            <button className="btn sm" aria-label="Slower" disabled={!!tempoOverride || tempo <= 40} onClick={() => setTempo(tempo - 4)}>−</button>
-            <span className="chip accent">{tempo} bpm</span>
-            <button className="btn sm" aria-label="Faster" disabled={!!tempoOverride || tempo >= 168} onClick={() => setTempo(tempo + 4)}>+</button>
-            <span className="grow" />
-            {!listenFirst && left > 0 && <><span className="muted small" aria-live="polite">Starts in {left} s</span><button className="btn sm ghost" onClick={() => setLeft(0)}>Wait</button></>}
-          </div>
-          {stalled && <div className="feedback bad"><div className="txt">Sound is paused<span>Tap Start to wake it up.</span></div></div>}
-          <button className="btn primary big" onClick={begin}><Icon name="playtri" size={16} />{listenFirst ? 'Listen' : 'Start now'}</button>
-        </div>
-      )}
-      {phase === 'listen' && <div className="card center bold" aria-live="polite">Listen…</div>}
-      {phase === 'countin' && <div className="count" aria-live="assertive">{count || 1}</div>}
-      {phase === 'play' && arcade && a.kind === 'rhythm' && <div className="center bold" style={{ fontSize: 22, minHeight: 30, color: judge === 'Perfect' ? 'var(--ok)' : judge === 'Good' ? 'var(--accent)' : 'var(--bad)' }} aria-live="off">{judge}</div>}
-      {phase === 'scan' && a.kind === 'perform' && mode === 'screen' && <><div className="small muted">Find your starting position. Nothing counts until the count-in ends.</div><Keyboard lo={range[0]} hi={range[1]} /></>}
-      {phase === 'scan' && a.kind === 'perform' && mode === 'mic' && <>{expectP.staves.length > 1 || onsets(expectP).some((o) => o.midis.length > 1) ? <div className="feedback bad"><div className="txt">The microphone hears one note at a time<span>This passage has notes sounding together. Switch to Keys or MIDI to be graded fairly.</span></div></div> : null}<MicBar /></>}
-      {phase === 'scan' && a.kind === 'perform' && mode === 'midi' && <MidiBar />}
-      {(phase === 'play' || phase === 'countin') && (
+      {showScore && <div className={phase === 'result' ? undefined : 'perf-score' + (passage.staves.length > 1 ? ' tall' : '')}><Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={st.notationScale} /></div>}
+      {/* One block, always in the same place: a fixed-height status area, then the input. Nothing below the score
+          changes size between scanning, the count-in and playing, so the keyboard never moves under your hands. */}
+      {phase !== 'result' && (
         <div className="col dock">
-          {a.kind === 'rhythm' ? (mode === 'mic' ? <MicBar /> : <button className={'tappad' + (hit ? ' hit' : '')} onPointerDown={(e) => { e.preventDefault(); emitTap('screen'); }}>Tap here, or press any key</button>)
-            : mode === 'mic' ? <MicBar /> : mode === 'midi' ? <MidiBar /> : <Keyboard lo={range[0]} hi={range[1]} />}
-          <button className="btn ghost sm" onClick={() => { clear(); stopAll(); setPhase('scan'); setLeft(0); }}><Icon name="stop" size={14} />Stop</button>
+          <div className="perf-status">
+            {phase === 'scan' && <>
+              <div className="row">
+                <button className="btn sm" aria-label="Slower" disabled={!!tempoOverride || tempo <= 40} onClick={() => setTempo(tempo - 4)}>−</button>
+                <span className="chip accent">{tempo} bpm</span>
+                <button className="btn sm" aria-label="Faster" disabled={!!tempoOverride || tempo >= 168} onClick={() => setTempo(tempo + 4)}>+</button>
+                <span className="grow" />
+                {stalled ? <span className="small" style={{ color: 'var(--bad)' }} role="status">Sound is paused. Tap Start.</span>
+                  : !listenFirst && left > 0 ? <><span className="muted small" aria-live="polite">Starts in {left} s</span><button className="btn sm ghost" onClick={() => setLeft(0)}>Wait</button></>
+                    : <span className="muted small">{a.kind === 'perform' ? 'Find your starting position' : 'Ready when you are'}</span>}
+              </div>
+              <button className="btn primary big" onClick={begin}><Icon name="playtri" size={16} />{listenFirst ? 'Listen' : 'Start now'}</button>
+            </>}
+            {phase === 'listen' && <div className="center bold" style={{ fontSize: 20 }} aria-live="polite">Listen…</div>}
+            {phase === 'countin' && <div className="count" aria-live="assertive">{count || 1}</div>}
+            {phase === 'play' && (
+              <div className="row">
+                <span className="chip accent">{tempo} bpm</span>
+                <span className="grow center bold" style={{ fontSize: 20, color: !arcade || a.kind !== 'rhythm' ? 'var(--muted)' : judge === 'Perfect' ? 'var(--ok)' : judge === 'Good' ? 'var(--accent)' : 'var(--bad)' }} aria-live="off">{arcade && a.kind === 'rhythm' ? judge || 'Go' : 'Keep going'}</span>
+                <button className="btn sm" onClick={() => { clear(); stopAll(); setPhase('scan'); setLeft(0); }}><Icon name="stop" size={14} />Stop</button>
+              </div>
+            )}
+          </div>
+          {a.kind === 'rhythm'
+            ? (mode === 'mic' ? <MicBar /> : <button className={'tappad' + (hit ? ' hit' : '')} disabled={!live} onPointerDown={(e) => { e.preventDefault(); emitTap('screen'); }}>{live ? 'Tap here, or press any key' : 'You will tap here'}</button>)
+            : mode === 'mic' ? <>{chordal && <div className="small" style={{ color: 'var(--bad)' }}>The microphone hears one note at a time. This passage has notes sounding together: use Keys or MIDI to be graded fairly.</div>}<MicBar /></>
+              : mode === 'midi' ? <MidiBar /> : <Keyboard lo={range[0]} hi={range[1]} />}
         </div>
       )}
       {phase === 'result' && result && (

@@ -150,3 +150,23 @@ describe('content', () => {
     for (const id of Object.keys(EX)) for (let seed = 1; seed <= 100; seed++) EX[id].gen(exParams(id), mulberry(seed));
   });
 });
+
+describe('saved progress survives updates', () => {
+  it('keeps lessons, skills, XP and streak from an older save and fills in newer settings', async () => {
+    const store = await import('../src/store');
+    const full = JSON.parse(store.exportJson());
+    const old = JSON.parse(JSON.stringify(full));
+    const body = old.state ?? old;
+    body.lessons = { ...(body.lessons ?? {}), 'saved-lesson': { done: true, score: 0.9 } };
+    body.profile.xp = 4321;
+    delete body.dailyLog; delete body.profile.settings.bigKeys; delete body.profile.settings.sfx;
+    store.importJson(JSON.stringify(old));
+    const s = store.get() as any;
+    expect(s.lessons['saved-lesson']).toBeTruthy();
+    expect(s.profile.xp).toBe(4321);
+    expect(s.dailyLog).toBeDefined();
+    expect(s.profile.settings.bigKeys).toBeDefined();
+    expect(s.profile.settings.sfx).toBeDefined();
+    expect(store.SCHEMA).toBe(1);
+  });
+});

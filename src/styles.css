@@ -94,6 +94,18 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 32px
 .choice.right { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); } .choice.wrong { background: var(--bad-tint); border-color: var(--bad); color: var(--bad); } .choice.gone { opacity: 0.3; }
 .tappad { width: 100%; min-height: 150px; border-radius: 16px; border: 2px dashed var(--line2); background: var(--surface); font-size: 18px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tappad:active, .tappad.hit { background: var(--accent-tint); border-color: var(--accent); }
+.perf-score { max-height: max(150px, calc(100dvh - 530px)); overflow-y: auto; overscroll-behavior: contain; }
+.perf-score.tall { max-height: max(240px, calc(100dvh - 530px)); }
+@media (max-height: 500px) {
+  .perf-score { max-height: max(130px, calc(100dvh - 250px)); } .perf-score.tall { max-height: max(200px, calc(100dvh - 250px)); }
+  .dock .perf-status { height: 44px; flex-direction: row; align-items: center; }
+  .dock .perf-status > * { flex: 1; } .dock .perf-status .btn.big { padding-top: 8px; padding-bottom: 8px; }
+  .dock .perf-status .count { font-size: 36px; }
+  .dock .kb { height: 124px; } .dock .tappad { min-height: 110px; }
+}
+.perf-status { height: 116px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.perf-status .count { font-size: 56px; }
+.tappad:disabled { opacity: 0.6; }
 .dock { position: sticky; bottom: 0; z-index: 3; background: var(--ground); padding: 8px 0 6px; box-shadow: 0 -8px 12px -8px rgba(0, 0, 0, 0.12); }
 .grid-stage { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
 .grid-stage .card.tap { padding: 8px 4px; font-size: 13px; }

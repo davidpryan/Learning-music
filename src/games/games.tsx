@@ -4,7 +4,7 @@ import { get, set, useS, dayKey } from '../store';
 import { SKILLS, record, saveBest, saveStars, gameXp, bump } from '../sched';
 import { EX, exParams, Question, answerStyle } from '../exercises';
 import { hashStr, mulberry, shuffle, fromDi, midi, pc, key as mkKey, diatonic, keyLabel, pname, label, Pitch, di } from '../music';
-import { playSeq, stopAll, sfx } from '../audio';
+import { playSeq, stopAll, sfx, audioState } from '../audio';
 import { onNote } from '../input';
 import { drawStave } from '../notation';
 import { LEVELS } from '../gen';
@@ -207,7 +207,7 @@ const ROAD: { desc: string; ex: string; level: number }[] = [
 const ROAD_STARS: [number, number, number] = [3, 6, 10];
 function Road({ daily, seed, onExit }: GP) {
   const s = useS(); const [tier, setTier] = useState<number | null>(daily ? 0 : null), [run, setRun] = useState(0), [tempo, setTempo] = useState(LEVELS[1].tempo - 8), [end, setEnd] = useState(false), [n, setN] = useState(0);
-  if (tier == null) return <Tiers title="Open Road" blurb="Unseen phrases, one after another. Pass each at 80% to stay on the road. The tempo rises 4 bpm every 3 passes. Stars at runs of 3, 6 and 10." desc={ROAD.map((r) => r.desc)} onPick={(t) => { setRun(0); setN(0); setEnd(false); setTempo(LEVELS[ROAD[t].level].tempo - 8); setTier(t); }} onExit={onExit} best={(t) => 'Best run ' + (s.bests['road:' + t] ?? 0)} stars={(t) => s.stars['road:' + t] ?? 0} />;
+  if (tier == null) return <Tiers title="Open Road" blurb="Unseen phrases, one after another. Pass each at 60% to stay on the road. The tempo rises 4 bpm every 3 passes. Stars at runs of 3, 6 and 10." desc={ROAD.map((r) => r.desc)} onPick={(t) => { setRun(0); setN(0); setEnd(false); setTempo(LEVELS[ROAD[t].level].tempo - 8); setTier(t); }} onExit={onExit} best={(t) => 'Best run ' + (s.bests['road:' + t] ?? 0)} stars={(t) => s.stars['road:' + t] ?? 0} />;
   const T = ROAD[tier], exit = daily ? onExit : () => setTier(null);
   return (
     <><TopBar title={`Open Road · stage ${tier + 1}`} sub={`Run of ${run} · ${tempo} bpm`} onBack={exit} /><main className="main col">
@@ -225,7 +225,7 @@ function Echo({ daily, seed, onExit }: GP) {
   const s = useS(); const rnd = useRef(daily && seed != null ? mulberry(seed) : Math.random);
   function pickDeg(prev?: number) { const r = rnd.current; let d = prev ?? [0, 2, 4][Math.floor(r() * 3)]; if (prev != null) { d += (r() < 0.7 ? 1 : 2) * (r() < 0.5 ? 1 : -1); d = Math.max(-1, Math.min(8, d)); if (d === prev) d = prev + (prev > 3 ? -1 : 1); } return d; }
   const fresh = () => { const a = pickDeg(); return [a, pickDeg(a)]; };
-  const [seq, setSeq] = useState<number[]>(fresh), [round, setRound] = useState(0), [replays, setReplays] = useState(2), [end, setEnd] = useState<null | number>(null), [started, setStarted] = useState(false);
+  const [seq, setSeq] = useState<number[]>(fresh), [round, setRound] = useState(0), [replays, setReplays] = useState(2), [end, setEnd] = useState<null | number>(null), [started, setStarted] = useState(false), [free, setFree] = useState(false);
   const ms = seq.map((d) => 60 + SC[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7));
   const play = () => playSeq(ms.map((m, i) => ({ t: i * 0.75, d: 0.7, midis: [m] })), 60, s.profile.settings.timbre);
   const q: Question = { prompt: `Echo these ${seq.length} notes`, sub: 'C major · starts on a note of the C chord', play, kbRange: [55, 79], item: 'echo:' + seq.length, explain: ms.map((m) => label({ l: [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6][pc(m)], a: 0, o: 4 })).join(' '),
@@ -233,9 +233,9 @@ function Echo({ daily, seed, onExit }: GP) {
   const restart = () => { if (daily && seed != null) rnd.current = mulberry(seed); setSeq(fresh()); setRound(round + 1); setReplays(2); setEnd(null); };
   return (
     <><TopBar title="Echo" sub={`Round ${seq.length - 1} · best ${s.bests.echo ?? 0} notes`} onBack={onExit} right={<Stars n={s.stars['echo:0'] ?? 0} />} /><main className="main col">
-      {!started ? <div className="col center" style={{ paddingTop: 20 }}><h1>Echo</h1><p className="muted">Listen to a short melody in C major, then play or sing it back. Every round adds a note. You get two replays per round. Stars at 4, 6 and 8 notes.</p><InputSwitch choice /><button className="btn primary big" onClick={() => setStarted(true)}>Start</button></div>
+      {!started ? <div className="col center" style={{ paddingTop: 20 }}><h1>Echo</h1><p className="muted">Listen to a short melody in C major, then play or sing it back. Every round adds a note. You get two replays per round. Stars at 4, 6 and 8 notes.</p><InputSwitch choice /><button className="btn primary big" onClick={() => { setFree(audioState() !== 'running'); setStarted(true); }}>Start</button></div>
         : end != null ? <Done title="Echo over" stars={starsFor(end, ECHO_STARS)} lines={[`${end} notes echoed`, `Best: ${Math.max(end, s.bests.echo ?? 0)}`]} onAgain={restart} onExit={onExit} />
-          : <><InputSwitch choice /><button className="btn" disabled={replays <= 0} onClick={() => { stopAll(); play(); setReplays(replays - 1); }}><Icon name="replay" size={14} />Hear it again ({replays} left)</button>
+          : <><InputSwitch choice /><button className="btn big" disabled={!free && replays <= 0} onClick={() => { stopAll(); play(); if (free) setFree(false); else setReplays(replays - 1); }}><Icon name="replay" size={16} />{free ? 'Play the melody' : `Hear it again (${replays} left)`}</button>
             <Runner key={round} bare auto noReplay question={q} items={[{ ex: 'E7', preset: {}, skillId: skillFor('E7') }]} count={1} ctx="game" onDone={() => {}}
               onAnswer={(ok) => setTimeout(() => { if (ok) { const st = starsFor(seq.length, ECHO_STARS); saveBest('echo', seq.length); if (st) saveStars('echo:0', st); gameXp(seq.length * 5); setSeq([...seq, pickDeg(seq[seq.length - 1])]); setRound(round + 1); setReplays(2); } else { markDaily(daily, 'echo', seq.length - 1); setEnd(seq.length - 1); } }, ok ? 700 : 1500)} /></>}
     </main></>

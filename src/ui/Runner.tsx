@@ -10,6 +10,7 @@ import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
 import { pickFresh, forget } from '../pick';
 import { get, useS, InputMode } from '../store';
+import { CFG } from '../config';
 import { Keyboard, KeyMark } from './Keyboard';
 import { Icon, InputSwitch, MicBar, MidiBar } from './common';
 import { Performer, PerfExtra } from './Perform';
@@ -76,9 +77,8 @@ export function Runner(p: RunnerProps) {
         <div className="row">
           <span className="chip" aria-label={`Question ${i + 1} of ${p.count}`}>{i + 1} / {p.count > 900 ? '∞' : p.count}</span>
           <span className="grow" />
-          {q.play && heard && <button className="btn sm" onClick={hear}><Icon name="replay" size={14} />Replay</button>}
-          {!isPerf && !res && <button className="btn sm" onClick={() => setHint(true)} disabled={hint}><Icon name="hint" size={14} />Hint</button>}
-          {!res && !p.auto && <button className="btn sm ghost" onClick={() => finish(false)}>{isPerf ? 'Skip' : 'Show answer'}</button>}
+          {!isPerf && <button className="btn sm" style={res ? { visibility: 'hidden' } : undefined} onClick={() => setHint(true)} disabled={hint || !!res}><Icon name="hint" size={14} />Hint</button>}
+          {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : 'Show answer'}</button>}
         </div>
       )}
       <div>
@@ -86,11 +86,9 @@ export function Runner(p: RunnerProps) {
         {q.sub && <div className="muted small" style={{ marginTop: 2 }}>{q.sub}</div>}
       </div>
       {q.score && !isPerf && <Score spec={res && !res.ok && q.reveal ? q.reveal : q.score} scale={settings.notationScale} />}
-      {!q.score && res && q.reveal && <Score spec={q.reveal} scale={settings.notationScale} />}
       {q.kb && <Keyboard lo={q.kbRange?.[0] ?? 48} hi={q.kbRange?.[1] ?? 72} marks={Object.fromEntries(q.kb.map((m) => [m, 'accent' as KeyMark]))} display short labels={false} />}
-      {q.play && !heard && <button className="btn primary big" onClick={hear}><Icon name="playtri" size={16} />Play the sound</button>}
-      {q.play && heard && p.bare && !p.noReplay && <button className="btn" onClick={hear}><Icon name="replay" size={14} />Hear it again</button>}
-      {hint && !res && a.kind === 'steps' && <div className="chip accent" style={{ alignSelf: 'flex-start' }}>Hint: {a.steps.length > 1 ? 'it starts on ' : 'it includes '}{label(fromMidi(a.steps[0][0]))}</div>}
+      {/* The sound button keeps one place and one size whether or not the sound has played yet. */}
+      {q.play && !p.noReplay && <button className={'btn big' + (heard ? '' : ' primary')} onClick={hear}><Icon name={heard ? 'replay' : 'playtri'} size={16} />{heard ? 'Hear it again' : 'Play the sound'}</button>}
 
       {a.kind === 'steps' && !isPerf && (
         <>
@@ -108,13 +106,15 @@ export function Runner(p: RunnerProps) {
         </>
       )}
 
+      {hint && !res && a.kind === 'steps' && <div className="chip accent" style={{ alignSelf: 'flex-start' }}>Hint: {a.steps.length > 1 ? 'it starts on ' : 'it includes '}{label(fromMidi(a.steps[0][0]))}</div>}
       {res && (
         <div className={'feedback ' + (res.ok ? 'ok' : 'bad')} role="status" aria-live="polite">
           <Icon name={res.ok ? 'check' : 'x'} />
-          <div className="txt">{isPerf ? (res.ok ? 'Passed' : 'Not yet: aim for 80% on both') : res.ok ? 'Correct' : 'Not quite'}{!isPerf && <span>{q.explain}</span>}</div>
+          <div className="txt">{isPerf ? (res.ok ? 'Passed' : `Not yet: aim for ${Math.round(CFG.phrasePass * 100)}% on both`) : res.ok ? 'Correct' : 'Not quite'}{!isPerf && <span>{q.explain}</span>}</div>
           {res.ok && res.xp > 0 && <span className="chip ok" aria-label={`${res.xp} experience points`}>+{res.xp} XP</span>}
         </div>
       )}
+      {!q.score && res && q.reveal && <Score spec={q.reveal} scale={settings.notationScale} />}
       {res && !p.auto && (!res.ok || isPerf) && (
         <div className="row">
           {isPerf && <button className="btn grow" onClick={retry}><Icon name="replay" size={16} />Try again</button>}
