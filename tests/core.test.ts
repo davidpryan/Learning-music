@@ -170,3 +170,29 @@ describe('saved progress survives updates', () => {
     expect(store.SCHEMA).toBe(1);
   });
 });
+
+describe('games are suggested only for learned skills', () => {
+  it('nothing is suggested to a beginner, and games open as lessons are passed, without touching saved progress', async () => {
+    const store = await import('../src/store'); const sched = await import('../src/sched'); const { LESSONS } = await import('../src/content');
+    const games = await import('../src/games/games');
+    store.resetAll();
+    const ids = Object.keys(sched.GAME_NEEDS);
+    expect(ids.filter((g) => sched.gameReady(store.get(), g))).toEqual([]);
+    expect(games.dailyChallenge()).toBeNull();
+    expect(sched.buildSession(store.get()).some((x: any) => x.kind === 'game')).toBe(false);
+    for (const g of ids) expect(sched.gameOpensWith(g)).toBeTruthy();
+    // pass the lesson that opens Staff Runner: only games it covers become ready
+    const l = sched.gameOpensWith('runner')!;
+    store.set((s: any) => { s.lessons[l.id] = { passedAt: Date.now(), score: 1 }; s.stars['rush:0:0'] = 3; s.profile.xp = 777; });
+    const s = store.get();
+    expect(sched.gameReady(s, 'runner')).toBe(true);
+    const have = sched.learnedEx(s);
+    for (const g of ids) if (g !== 'boss') expect(sched.gameReady(s, g)).toBe(sched.GAME_NEEDS[g].some((m: string[]) => m.every((e) => have.has(e))));
+    const dc = games.dailyChallenge(); expect(dc && sched.gameReady(s, dc.id)).toBe(true);
+    expect(s.stars['rush:0:0']).toBe(3); expect(s.profile.xp).toBe(777);
+    // with everything passed, every game and every mode is ready
+    store.set((st: any) => { for (const x of LESSONS) st.lessons[x.id] = { passedAt: Date.now(), score: 1 }; });
+    for (const g of ids) expect(sched.gameModes(store.get(), g).every(Boolean)).toBe(true);
+    store.resetAll();
+  });
+});

@@ -94,6 +94,7 @@ input[type='range'] { width: 100%; accent-color: var(--accent); min-height: 32px
 .choice.right { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); } .choice.wrong { background: var(--bad-tint); border-color: var(--bad); color: var(--bad); } .choice.gone { opacity: 0.3; }
 .tappad { width: 100%; min-height: 150px; border-radius: 16px; border: 2px dashed var(--line2); background: var(--surface); font-size: 18px; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; }
 .tappad:active, .tappad.hit { background: var(--accent-tint); border-color: var(--accent); }
+.node.later { opacity: 0.6; }
 .perf-score { max-height: max(150px, calc(100dvh - 530px)); overflow-y: auto; overscroll-behavior: contain; }
 .perf-score.tall { max-height: max(240px, calc(100dvh - 530px)); }
 @media (max-height: 500px) {

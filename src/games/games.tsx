@@ -1,7 +1,7 @@
 // The nine games. Each reuses the exercise generators and graders, and writes to the same skill records.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { get, set, useS, dayKey } from '../store';
-import { SKILLS, record, saveBest, saveStars, gameXp, bump } from '../sched';
+import { SKILLS, record, saveBest, saveStars, gameXp, bump, gameReady, gameModes } from '../sched';
 import { EX, exParams, Question, answerStyle } from '../exercises';
 import { hashStr, mulberry, shuffle, fromDi, midi, pc, key as mkKey, diatonic, keyLabel, pname, label, Pitch, di } from '../music';
 import { playSeq, stopAll, sfx, audioState } from '../audio';
@@ -25,7 +25,8 @@ export const GAMES = [
   { id: 'dash', name: 'Degree Dash', track: 'ear', blurb: '60 seconds by ear: degrees, intervals, chord colour or function.' },
   { id: 'detective', name: 'Progression Detective', track: 'ear', blurb: '60 cases. Work out the four chords.' },
 ] as const;
-export function dailyChallenge() { const pool = ['rush', 'dash', 'runner', 'echo', 'road', 'rhythm']; const seed = hashStr(dayKey()); const id = pool[seed % pool.length]; return { id, name: GAMES.find((g) => g.id === id)!.name, seed }; }
+/** Today's challenge, drawn only from games that cover something already learned. Null until the first such game opens. */
+export function dailyChallenge(): { id: string; name: string; seed: number } | null { const s = get(), pool = ['rush', 'dash', 'runner', 'echo', 'road', 'rhythm'].filter((g) => gameReady(s, g)); if (!pool.length) return null; const seed = hashStr(dayKey()); const id = pool[seed % pool.length]; return { id, name: GAMES.find((g) => g.id === id)!.name, seed }; }
 const skillFor = (ex: string) => Object.values(SKILLS).filter((k) => k.ex === ex && get().skills[k.id]).pop()?.id;
 /** Record today's daily challenge: once for the badge counter, and the best score of the day in the history. */
 function markDaily(daily: boolean | undefined, game: string, score: number) {
@@ -35,10 +36,10 @@ function markDaily(daily: boolean | undefined, game: string, score: number) {
 }
 const starsFor = (score: number, th: [number, number, number]) => th.filter((t) => score >= t).length;
 const TIER = ['Bronze', 'Silver', 'Gold'];
-function Tiers({ title, blurb, desc, onPick, onExit, best, stars, modes, mode, onMode, ex }: { ex?: string; title: string; blurb: string; desc: string[]; onPick: (t: number) => void; onExit: () => void; best?: (t: number) => string; stars?: (t: number) => number; modes?: string[]; mode?: number; onMode?: (m: number) => void }) {
+function Tiers({ title, blurb, desc, onPick, onExit, best, stars, modes, mode, onMode, ex, later }: { ex?: string; later?: boolean[]; title: string; blurb: string; desc: string[]; onPick: (t: number) => void; onExit: () => void; best?: (t: number) => string; stars?: (t: number) => number; modes?: string[]; mode?: number; onMode?: (m: number) => void }) {
   return (
     <><TopBar title={title} onBack={onExit} /><main className="main col">
-      {modes && <div className="seg" role="group" aria-label="Mode" style={{ flexWrap: 'wrap' }}>{modes.map((m, i) => <button key={m} aria-pressed={mode === i} onClick={() => onMode?.(i)}>{m}</button>)}</div>}
+      {modes && <div className="seg" role="group" aria-label="Mode" style={{ flexWrap: 'wrap' }}>{modes.map((m, i) => <button key={m} aria-pressed={mode === i} style={later?.[i] ? { opacity: 0.5 } : undefined} aria-label={later?.[i] ? `${m}, not learned yet` : m} onClick={() => onMode?.(i)}>{m}</button>)}</div>}
       <p className="muted">{blurb}</p>{(!ex || answerStyle(ex) !== 'choices') && <InputSwitch choice={!!ex && answerStyle(ex) === 'either'} />}
       {desc.map((d, t) => <button key={t} className="card tap" onClick={() => onPick(t)}><span className="grow"><b>{desc.length === 3 ? TIER[t] : `Stage ${t + 1}`}</b><br /><span className="small muted">{d}</span></span><span style={{ textAlign: 'right' }}>{stars && <Stars n={stars(t)} />}{best && <><br /><span className="small muted">{best(t)}</span></>}</span><Icon name="playtri" size={14} /></button>)}
     </main></>
@@ -64,10 +65,12 @@ const DASH_MODES: Mode[] = [
 ];
 const RUSH_STARS: [number, number, number] = [100, 250, 450];
 function Rush({ daily, seed, onExit, kind }: GP & { kind: 'rush' | 'dash' }) {
-  const s = useS(); const [mode, setMode] = useState(0), [tier, setTier] = useState<number | null>(daily ? 0 : null);
+  const s = useS(); const okModes = gameModes(s, kind);
+  // start on the first mode the user has learned
+  const [mode, setMode] = useState(() => Math.max(0, gameModes(get(), kind).indexOf(true))), [tier, setTier] = useState<number | null>(daily ? 0 : null);
   const MODES = kind === 'rush' ? RUSH_MODES : DASH_MODES, M = MODES[mode], title = kind === 'rush' ? 'Chord Builder Rush' : 'Degree Dash';
   const key = (t: number) => `${kind}:${mode}:${t}`;
-  if (tier == null) return <Tiers title={title} ex={M.ex} modes={MODES.map((m) => m.name)} mode={mode} onMode={setMode} blurb={M.blurb} desc={M.desc} onExit={onExit} best={(t) => 'Best ' + (s.highs[key(t)] ?? 0)} stars={(t) => s.stars[key(t)] ?? 0} onPick={setTier} />;
+  if (tier == null) return <Tiers title={title} ex={M.ex} modes={MODES.map((m) => m.name)} later={okModes.map((x) => !x)} mode={mode} onMode={setMode} blurb={okModes[mode] ? M.blurb : `${M.blurb} You have not reached this in the lessons yet.`} desc={M.desc} onExit={onExit} best={(t) => 'Best ' + (s.highs[key(t)] ?? 0)} stars={(t) => s.stars[key(t)] ?? 0} onPick={setTier} />;
   const preset = M.presets[tier], keys = preset.keys as string[] | undefined;
   return <Timed title={`${mode === 0 ? title : M.name} · ${TIER[tier]}`} ex={M.ex} preset={preset} highKey={key(tier)} skillId={skillFor(M.ex)} stars={RUSH_STARS} seedBase={daily ? seed : undefined}
     rotate={keys && keys.length > 1 ? (b) => ({ ...preset, keys: [keys[b % keys.length]] }) : undefined} onExit={daily ? onExit : () => setTier(null)}
@@ -273,7 +276,7 @@ function Detective({ onExit }: GP) {
 }
 
 export function GameScreen({ id, daily, onExit }: { id: string; daily?: boolean; onExit: () => void }) {
-  const p = { daily, onExit, seed: daily ? dailyChallenge().seed : undefined };
+  const p = { daily, onExit, seed: daily ? hashStr(dayKey()) : undefined };
   switch (id) {
     case 'rush': return <Rush {...p} kind="rush" />; case 'dash': return <Rush {...p} kind="dash" />;
     case 'quest': return <Quest {...p} />; case 'boss': return <Boss {...p} />; case 'runner': return <StaffRunner {...p} />;

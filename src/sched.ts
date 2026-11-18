@@ -178,6 +178,34 @@ export function dueSkills(s: State, now = Date.now()): Skill[] {
   return Object.keys(s.skills).filter((id) => SKILLS[id] && new Date(s.skills[id].card.due).getTime() <= now)
     .sort((a, b) => new Date(s.skills[a].card.due).getTime() - new Date(s.skills[b].card.due).getTime()).map((id) => SKILLS[id]);
 }
+// ---------- which games fit what has been learned ----------
+/** Exercises each game draws on, one list per mode. A mode is ready when every exercise in it has been taught by a passed lesson. */
+export const GAME_NEEDS: Record<string, string[][]> = {
+  rush: [['T10'], ['T7'], ['T3'], ['T11']], quest: [['T3', 'T8', 'T10']], runner: [['T1']], rhythm: [['R1']], road: [['R2']],
+  echo: [['E7']], dash: [['E3'], ['E4'], ['E5'], ['E8']], detective: [['E9']], boss: [],
+};
+const GAME_TRACK: Record<string, Track> = { rush: 'theory', quest: 'theory', boss: 'theory', runner: 'reading', rhythm: 'reading', road: 'reading', echo: 'ear', dash: 'ear', detective: 'ear' };
+export function learnedEx(s: State): Set<string> { return new Set(Object.values(SKILLS).filter((k) => s.lessons[k.lessonId]?.passedAt).map((k) => k.ex)); }
+/** Per mode: has the user learned what it asks? Theory Boss has no modes; it opens with the first passed theory lesson. */
+export function gameModes(s: State, id: string): boolean[] {
+  if (id === 'boss') return [LESSONS.some((l) => l.track === 'theory' && s.lessons[l.id]?.passedAt)];
+  const have = learnedEx(s); return (GAME_NEEDS[id] ?? []).map((m) => m.every((e) => have.has(e)));
+}
+export const gameReady = (s: State, id: string) => gameModes(s, id).some(Boolean);
+/** The lesson that opens a game: the earliest one after which some mode is fully covered. */
+export function gameOpensWith(id: string): Lesson | null {
+  if (id === 'boss') return LESSONS.find((l) => l.track === 'theory') ?? null;
+  const first = (e: string) => LESSONS.findIndex((l) => l.unlocks.some((u) => u.ex === e));
+  const idx = (GAME_NEEDS[id] ?? []).map((m) => Math.max(...m.map(first))).filter((i) => i >= 0);
+  return idx.length ? LESSONS[Math.min(...idx)] : null;
+}
+/** A game to suggest for a skill, or null when no game covers what has been learned. */
+export function gameForSkill(s: State, k: Skill): string | null {
+  const ready = Object.keys(GAME_NEEDS).filter((g) => g !== 'boss' && gameReady(s, g));
+  const modesOk = (g: string) => GAME_NEEDS[g].filter((_, i) => gameModes(s, g)[i]);
+  return ready.find((g) => modesOk(g).some((m) => m.includes(k.ex))) ?? ready.find((g) => GAME_TRACK[g] === k.track) ?? null;
+}
+
 export type SessionItem = { kind: 'review'; skill: Skill; n: number } | { kind: 'lesson'; lesson: Lesson } | { kind: 'reading'; skill: Skill } | { kind: 'ear'; skill: Skill; n: number } | { kind: 'game'; game: string; why: string };
 const isPerform = (k: Skill) => ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'].includes(k.ex);
 export function buildSession(s: State): SessionItem[] {
@@ -202,7 +230,8 @@ export function buildSession(s: State): SessionItem[] {
   if (ear.length) out.push({ kind: 'ear', skill: ear[ear.length - 1], n: CFG.earSetSize });
   // 5. a suggested game for the weakest skill of the week
   const weak = weakSpots(s)[0];
-  if (weak) out.push({ kind: 'game', game: weak.skill.track === 'ear' ? 'dash' : weak.skill.track === 'reading' ? 'runner' : 'rush', why: `Your weakest skill this week: ${weak.skill.title}` });
+  const game = weak && gameForSkill(s, weak.skill);
+  if (weak && game) out.push({ kind: 'game', game, why: `Your weakest skill this week: ${weak.skill.title}` });
   return out;
 }
 export function weakSpots(s: State): { skill: Skill; acc: number }[] {

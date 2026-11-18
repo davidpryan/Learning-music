@@ -39,7 +39,7 @@ export function Home() {
           <button className="card tap" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }} onClick={() => nav.go({ n: 'session' })}><span className="bigstat">{due}</span><span className="small muted">reviews due</span></button>
           <div className="card line" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}><span className="bigstat">{xp % CFG.xpPerLevel}<span className="small muted"> / {CFG.xpPerLevel} XP</span></span><Bar v={(xp % CFG.xpPerLevel) / CFG.xpPerLevel} /><span className="small muted">to level {playerLevel(xp) + 1}</span></div>
         </div>
-        <button className="card tap" onClick={() => nav.go({ n: 'game', id: dc.id, daily: true })}><Icon name="star" /><span className="grow"><span className="small muted">Daily challenge{dcDone ? ' · done today' : ''}</span><br /><b>{dc.name}</b></span><Icon name="playtri" size={14} /></button>
+        {dc && <button className="card tap" onClick={() => nav.go({ n: 'game', id: dc.id, daily: true })}><Icon name="star" /><span className="grow"><span className="small muted">Daily challenge{dcDone ? ' · done today' : ''}</span><br /><b>{dc.name}</b></span><Icon name="playtri" size={14} /></button>}
         {storageNote() && <div className="feedback bad"><div className="txt"><span>{storageNote()}</span></div></div>}
       </main>
     </>
