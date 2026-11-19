@@ -73,8 +73,8 @@ export function setVolumes(v: number, m: number, fx = true) { vol = v; metVol = 
 function track(n: AudioScheduledSourceNode) { live.add(n); n.onended = () => live.delete(n); }
 export function stopAll() { live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
 
-export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'piano', vel = 0.7, prompt = false) {
-  const c = ac(), f = freq(m), g = c.createGain(); g.connect(master);
+export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'piano', vel = 0.7, prompt = false, out?: AudioNode) {
+  const c = ac(), f = freq(m), g = c.createGain(); g.connect(out ?? master);
   const t0 = Math.max(when, c.currentTime), end = t0 + dur;
   const osc = (type: OscillatorType, mult: number, gain: number, detune = 0) => {
     const o = c.createOscillator(), og = c.createGain();
@@ -112,32 +112,25 @@ export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'p
   }
   if (prompt) busyUntil = Math.max(busyUntil, end + 0.15);
 }
+/** The beat. A short, soft piano note (not a beep): a higher one on the first beat of the bar. Uses the metronome volume. */
 export function click(when: number, accent = false) {
-  const c = ac(), o = c.createOscillator(), g = c.createGain();
-  o.type = 'square'; o.frequency.value = accent ? 1600 : 1100;
-  g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
-  o.connect(g); g.connect(metGain); track(o); o.start(when); o.stop(when + 0.06);
+  ac();
+  // While the microphone listens, the beat moves high and very short so it is not mistaken for a note you played.
+  if (micActive) playNote(accent ? 96 : 91, when, 0.03, 'piano', accent ? 0.4 : 0.28, false, metGain);
+  else playNote(accent ? 72 : 67, when, 0.09, 'piano', accent ? 0.55 : 0.36, false, metGain);
 }
+/** Arcade backing, also piano: a low note on the beat, a light high one off it. */
 export function drum(when: number, kind: 'kick' | 'hat') {
-  const c = ac(), g = c.createGain(); g.connect(master);
-  if (kind === 'kick') {
-    const o = c.createOscillator(); o.frequency.setValueAtTime(140, when); o.frequency.exponentialRampToValueAtTime(45, when + 0.12);
-    g.gain.setValueAtTime(0.6, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.18);
-    o.connect(g); track(o); o.start(when); o.stop(when + 0.2);
-  } else {
-    const o = c.createOscillator(), hp = c.createBiquadFilter(); o.type = 'square'; o.frequency.value = 6500; hp.type = 'highpass'; hp.frequency.value = 6000;
-    g.gain.setValueAtTime(0.08, when); g.gain.exponentialRampToValueAtTime(0.001, when + 0.04);
-    o.connect(hp); hp.connect(g); track(o); o.start(when); o.stop(when + 0.05);
-  }
+  if (kind === 'kick') playNote(48, when, 0.1, 'piano', 0.4); else playNote(84, when, 0.05, 'piano', 0.1);
 }
 /** Short interface sounds: a right answer, a win, a lost life. Off when sound effects are disabled. */
 export function sfx(kind: 'ok' | 'win' | 'life') {
   if (!sfxOn) return;
   try {
     const t = now() + 0.01;
-    if (kind === 'ok') { playNote(88, t, 0.07, 'sine', 0.22); playNote(93, t + 0.07, 0.1, 'sine', 0.22); }
-    else if (kind === 'win') [72, 76, 79, 84].forEach((m, i) => playNote(m, t + i * 0.09, 0.14, 'sine', 0.28));
-    else { playNote(52, t, 0.16, 'sine', 0.4); playNote(47, t + 0.14, 0.22, 'sine', 0.4); }
+    if (kind === 'ok') { playNote(84, t, 0.08, 'piano', 0.3); playNote(88, t + 0.08, 0.14, 'piano', 0.3); }
+    else if (kind === 'win') [72, 76, 79, 84].forEach((m, i) => playNote(m, t + i * 0.09, 0.16, 'piano', 0.34));
+    else { playNote(64, t, 0.16, 'piano', 0.4); playNote(59, t + 0.14, 0.24, 'piano', 0.4); }
   } catch { /* audio not ready */ }
 }
 export interface SeqEv { t: number; d: number; midis: number[] } // beats

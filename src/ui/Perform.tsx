@@ -85,7 +85,7 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
       expRef.current = onsets(passage).map((o) => o.t * qMs); setJudge('');
       const startA = t0 + clicksPerBar * clickSec, lead = (startA - c.currentTime) * 1000;
       if (listen) {
-        onsets(passage).forEach((o) => playNote(79, startA + (o.t * qMs) / 1000, 0.14, 'sine', 0.8, true));
+        onsets(passage).forEach((o) => playNote(79, startA + (o.t * qMs) / 1000, 0.2, 'piano', 0.85, true));
         setPhase('listen'); r.timers.push(setTimeout(() => go(false), lead + total * qMs + 350)); return;
       }
       r.startPerf = performance.now() + lead; r.events = []; r.taps = []; r.lastTap = -1e9; r.live = true;

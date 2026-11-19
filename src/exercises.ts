@@ -39,7 +39,7 @@ function natural(r: Rng, clef: Clef, range: string): Pitch {
   if (typeof R[0] === 'string') return P(pick(r, R as string[]));
   return fromDi(rint(r, R[0] as number, R[1] as number));
 }
-const timbre = (p: any): Timbre => (p?.rot ? (['piano', 'guitar', 'strings'] as Timbre[])[Math.floor(Math.random() * 3)] : get().profile.settings.timbre);
+const timbre = (_p?: any): Timbre => get().profile.settings.timbre;
 const cadence = (k: Key): SeqEv[] => [0, 3, 4, 0].map((d, i) => ({ t: i, d: i === 3 ? 1.6 : 0.95, midis: voicing(diatonic(k, d)) }));
 const ROOTS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'], ROOTS_ACC = ['Db', 'Eb', 'F#', 'Ab', 'Bb'];
 const VAL_NAME: Record<string, string> = { 4: 'Whole', 3: 'Dotted half', 2: 'Half', 1.5: 'Dotted quarter', 1: 'Quarter', 0.5: 'Eighth', 0.25: 'Sixteenth' };
@@ -410,7 +410,7 @@ def({
       const order = shuffle(r, opts), names = ['A', 'B', 'C'].slice(0, order.length), spb = 60 / p.tempo, os = onsets(passage), len = p.bars * 4;
       return {
         prompt: 'Which rhythm did you hear?', sub: 'One bar of clicks, then the rhythm',
-        play: () => { const t0 = now() + 0.15; for (let i = 0; i < 4 + len; i++) click(t0 + i * spb, i % 4 === 0); os.forEach((o) => playNote(79, t0 + (4 + o.t) * spb, 0.14, 'sine', 0.8, true)); return (4 + len) * spb + 0.3; },
+        play: () => { const t0 = now() + 0.15; for (let i = 0; i < 4 + len; i++) click(t0 + i * spb, i % 4 === 0); os.forEach((o) => playNote(79, t0 + (4 + o.t) * spb, 0.2, 'piano', 0.85, true)); return (4 + len) * spb + 0.3; },
         answer: { kind: 'slots', slots: [{ label: 'Rhythm', choices: names, value: names[order.indexOf(passage)], scores: order.map((o) => ({ passage: o, showTime: true })) }] }, item: `erh:${p.level}`, explain: 'The matching rhythm is marked',
       };
     }
@@ -474,7 +474,7 @@ def({
     const fixed = p.prog as string[] | undefined; const tonicRn = k.minor ? 'i' : 'I';
     const seq: string[] = fixed ?? [];
     if (!fixed) for (let i = 0; i < p.len; i++) { let c = i === 0 && pool.includes(tonicRn) && r() < 0.7 ? tonicRn : pick(r, pool); for (let t = 0; t < 5 && c === seq[i - 1]; t++) c = pick(r, pool); seq.push(c); }
-    const cs = seq.map((rn) => map[rn]), tb = p.style === 'band' ? 'guitar' : timbre(p), evs = bandEvents(cs.map(chordVoice), 2, p.style);
+    const cs = seq.map((rn) => map[rn]), tb = timbre(p), evs = bandEvents(cs.map(chordVoice), 2, p.style);
     return {
       prompt: 'Which chords do you hear, in order?', sub: `${keyLabel(k.name)} · ${seq.length} chords`, kbRange: [48, 72], play: () => playSeq(evs, p.tempo, tb as Timbre),
       answer: { kind: 'steps', steps: cs.map((c) => chordTones({ ...c.root, o: 4 }, c.q).map(midi)), octaveFree: true, alt: seq.map((rn, i) => ({ label: `Chord ${i + 1}`, choices: pool, value: rn })) },

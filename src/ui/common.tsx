@@ -92,7 +92,7 @@ export function figPassage(f: Extract<Fig, { staff: string }>): Passage {
   if (!f.time && !f.perc && !f.bass && p.staves[0].notes.length <= 9) p.free = true;
   return p;
 }
-export const playPassage = (p: Passage, tempo = p.tempo) => playSeq(onsets(p).map((o) => ({ t: o.t, d: o.d, midis: p.staves[o.staff].clef === 'percussion' ? [76] : o.midis })), tempo, p.staves[0].clef === 'percussion' ? 'sine' : get().profile.settings.timbre, 0.05, false);
+export const playPassage = (p: Passage, tempo = p.tempo) => playSeq(onsets(p).map((o) => ({ t: o.t, d: o.d, midis: p.staves[o.staff].clef === 'percussion' ? [76] : o.midis })), tempo, p.staves[0].clef === 'percussion' ? 'piano' : get().profile.settings.timbre, 0.05, false);
 function PlayBtn({ onPlay, label }: { onPlay: () => void; label: string }) { return <button className="btn sm" onClick={() => { stopAll(); onPlay(); }}><Icon name="playtri" size={14} />{label}</button>; }
 export function Figure({ fig }: { fig: Fig }) {
   if ('staff' in fig) { const p = figPassage(fig); return <div className="col" style={{ gap: 8 }}><Score spec={{ passage: p, showTime: !!fig.time || !!fig.perc }} />{fig.play && <div><PlayBtn label="Listen" onPlay={() => playPassage(p, p.free ? 84 : p.tempo)} /></div>}</div>; }
