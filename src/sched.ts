@@ -23,6 +23,9 @@ export function levelUnlocked(s: State, t: Track, level: number): boolean {
   const lower = trackLessons(t).filter((l) => l.level < level);
   if (!lower.length) return true;
   if (!lower.every((l) => s.lessons[l.id]?.passedAt)) return false;
+  // Synth units open as soon as the lessons before them are passed. Each lesson's check already covers what it taught,
+  // so there is no extra round of drilling the same questions to move on.
+  if (t === 'synth') return true;
   const prevLevel = Math.max(...lower.map((l) => l.level));
   const sk = Object.values(SKILLS).filter((k) => k.track === t && k.level === prevLevel);
   if (!sk.length) return true;
@@ -58,6 +61,8 @@ export function gateFor(s: State, t: Track): { lesson: Lesson; todo: Skill[]; re
   return { lesson: l, todo: sk.filter((k) => !done(k)), ready: sk.filter(done).length, need: Math.ceil(sk.length * CFG.levelUnlockShare), total: sk.length };
 }
 export const PERFORM_EX = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'];
+/** Most review skills a synth session opens with. */
+export const SYNTH_REVIEW_CAP = 5;
 /** Exercises with no quick answer to time: no 60-second sprint. */
 export const SLOW_EX = [...PERFORM_EX, 'S5', 'S6', 'S7', 'S10', 'S12', 'S15'];
 /** Controls the lessons passed so far have introduced, in lesson order. */
@@ -83,7 +88,9 @@ export function passLesson(id: string, score: number, quiet = false, credit: { s
   set((s) => {
     const first = !s.lessons[id]?.passedAt;
     s.lessons[id] = { passedAt: s.lessons[id]?.passedAt ?? Date.now(), best: Math.max(score, s.lessons[id]?.best ?? 0) };
-    for (const k of skillsOf(id)) if (!s.skills[k.id]) s.skills[k.id] = { status: 'learning', card: createEmptyCard(new Date()), recent: [], againRun: 0, items: {} };
+    // A synth skill just shown in the lesson's check comes up for its first review tomorrow, not straight away.
+    const firstDue = new Date(Date.now() + (LESSON_BY_ID[id]?.track === 'synth' ? 20 * 3600 * 1000 : 0));
+    for (const k of skillsOf(id)) if (!s.skills[k.id]) s.skills[k.id] = { status: 'learning', card: createEmptyCard(firstDue), recent: [], againRun: 0, items: {} };
     if (first) for (const c of credit) { const k = c.skillId ? s.skills[c.skillId] : undefined; if (k) k.recent.push({ c: c.ok, ms: SKILLS[c.skillId!].target || 3000, t: Date.now() }); }
     if (score >= 5 && !quiet) s.counters.perfectChecks = (s.counters.perfectChecks ?? 0) + 1;
     if (first && !quiet) addXp(s, 50);
@@ -233,10 +240,12 @@ export function buildSession(s: State): SessionItem[] {
   const out: SessionItem[] = [], due = dueSkills(s);
   // 1. due reviews, oldest first, capped, interleaved across tracks
   const TRACKS = modeTracks(s.profile.mode), byTrack: Record<string, Skill[]> = { theory: [], reading: [], ear: [], synth: [] };
-  due.filter((k) => !isPerform(k)).slice(0, CFG.sessionReviewCap).forEach((k) => byTrack[k.track].push(k));
-  for (let i = 0; i < CFG.sessionReviewCap; i++) for (const t of TRACKS) { const k = byTrack[t][i]; if (k) out.push({ kind: 'review', skill: k, n: 2 }); }
+  // Synth mode keeps reviews short: five skills at most, one question each for a full match, and a new lesson every session.
+  const synth = TRACKS.includes('synth'), cap = synth ? SYNTH_REVIEW_CAP : CFG.sessionReviewCap;
+  due.filter((k) => !isPerform(k)).slice(0, cap).forEach((k) => byTrack[k.track].push(k));
+  for (let i = 0; i < cap; i++) for (const t of TRACKS) { const k = byTrack[t][i]; if (k) out.push({ kind: 'review', skill: k, n: synth && SLOW_EX.includes(k.ex) ? 1 : 2 }); }
   // 2. one new lesson from the track furthest behind
-  if (due.length <= CFG.sessionNoNewAbove) {
+  if (synth || due.length <= CFG.sessionNoNewAbove) {
     const l = nextLesson(s);
     if (l) out.push({ kind: 'lesson', lesson: l });
     // every open lesson is done but a level is still locked: practise toward the unlock instead
@@ -249,9 +258,6 @@ export function buildSession(s: State): SessionItem[] {
   // 4. one ear set on the newest ear skill
   const ear = Object.values(SKILLS).filter((k) => k.track === 'ear' && TRACKS.includes('ear') && s.skills[k.id] && !isPerform(k));
   if (ear.length) out.push({ kind: 'ear', skill: ear[ear.length - 1], n: CFG.earSetSize });
-  // 4b. in synth mode, a short set of matching by ear on the newest match skill
-  const match = Object.values(SKILLS).filter((k) => k.track === 'synth' && s.skills[k.id] && ['S5', 'S6', 'S7', 'S10', 'S12', 'S15'].includes(k.ex) && TRACKS.includes('synth'));
-  if (match.length) out.push({ kind: 'review', skill: match[match.length - 1], n: 3 });
   if (TRACKS.includes('synth') && Object.values(SKILLS).some((k) => k.track === 'synth' && s.skills[k.id] && ['S1', 'S2', 'S3', 'S4', 'S8', 'S11'].includes(k.ex))) { out.push({ kind: 'game', game: 's-name', why: 'A quick round of listening to finish.' }); return out; }
   // 5. a suggested game for the weakest skill of the week
   const weak = weakSpots(s)[0];

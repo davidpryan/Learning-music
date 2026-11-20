@@ -1,6 +1,6 @@
 import { useNav } from '../nav';
 import { useS, dayKey, storageNote } from '../store';
-import { dayProgress, dueSkills, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor, setMode } from '../sched';
+import { dayProgress, dueSkills, SYNTH_REVIEW_CAP, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor, setMode } from '../sched';
 import { modeTracks, TRACK_NAME } from '../content';
 import { CFG } from '../config';
 import { Icon, Bar, TopBar } from '../ui/common';
@@ -45,7 +45,7 @@ export function Home() {
           <button key={t} className="card tap" onClick={() => nav.go({ n: 'run', title: `Unlock ${TRACK_NAME[t]} level ${g!.lesson.level}`, sub: `${g!.ready} of ${g!.need} skills ready`, items: d.items, count: d.count, ctx: 'practice' })}>
             <Icon name="lock" /><span className="grow"><span className="small muted">{TRACK_NAME[t]} level {g!.lesson.level} is locked · {g!.ready} of {g!.need} skills ready</span><br /><b>Practise to unlock it</b><Bar v={g!.ready / g!.need} /></span><Icon name="playtri" size={14} /></button>); })}
         <div className="grid2">
-          <button className="card tap" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }} onClick={() => nav.go({ n: 'session' })}><span className="bigstat">{due}</span><span className="small muted">reviews due</span></button>
+          <button className="card tap" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }} onClick={() => nav.go({ n: 'session' })}><span className="bigstat">{synth ? Math.min(due, SYNTH_REVIEW_CAP) : due}</span><span className="small muted">{synth ? 'reviews today' : 'reviews due'}</span></button>
           <div className="card line" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}><span className="bigstat">{xp % CFG.xpPerLevel}<span className="small muted"> / {CFG.xpPerLevel} XP</span></span><Bar v={(xp % CFG.xpPerLevel) / CFG.xpPerLevel} /><span className="small muted">to level {playerLevel(xp) + 1}</span></div>
         </div>
         {synth && <button className="card tap" onClick={() => nav.go({ n: 'sandbox' })}><Icon name="keys" /><span className="grow"><span className="small muted">Free play</span><br /><b>Open the synth</b></span><Icon name="playtri" size={14} /></button>}

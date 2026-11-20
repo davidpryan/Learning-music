@@ -1,7 +1,8 @@
 import './synth-setup';
 import { describe, it, expect } from 'vitest';
 import { LESSONS } from '../src/content';
-import { SKILLS } from '../src/sched';
+import { SKILLS, levelUnlocked, lessonStatus, buildSession, passLesson, SYNTH_REVIEW_CAP } from '../src/sched';
+import { get, set } from '../src/store';
 import { EX, exParams } from '../src/exercises';
 import { mulberry } from '../src/music';
 import { PD, mkPatch, norm, denorm, isChoice, isStepped } from '../src/synth/dsp';
@@ -141,5 +142,22 @@ describe('synth content', () => {
   it('a match never aims at an option the learner has not been taught', () => {
     const u = synth.find((l) => l.id === 'S2.8')!.unlocks.find((x) => x.ex === 'S6')!;
     for (let seed = 1; seed <= 80; seed++) { const a: any = EX.S6.gen(exParams('S6', u.preset), mulberry(seed)).answer; expect(a.target.o1w).toBeLessThanOrEqual(3); expect(a.target.o2w).toBeLessThanOrEqual(3); expect(a.start.o1w).toBeLessThanOrEqual(3); expect(a.limit.o1w).toBe(3); }
+  });
+  it('synth units open on passing the lessons before them, with no extra drilling, and sessions stay short', () => {
+    set((s) => { s.profile.mode = 'synth'; });
+    const unit1 = synth.filter((l) => l.level === 1), first2 = synth.find((l) => l.level === 2)!;
+    expect(lessonStatus(get(), first2)).toBe('locked');
+    for (const l of unit1) passLesson(l.id, 5, true);
+    // not one practice answer has been given, and unit 2 is open
+    expect(levelUnlocked(get(), 'synth', 2)).toBe(true); expect(lessonStatus(get(), first2)).toBe('available');
+    // skills just shown in a check are not due again today, so the session goes straight to the next lesson
+    let plan = buildSession(get());
+    expect(plan.filter((x) => x.kind === 'review').length).toBe(0); expect(plan.find((x) => x.kind === 'lesson')?.lesson?.id).toBe(first2.id);
+    // with a large backlog due, a session still opens with only a few reviews and still offers the next lesson
+    set((s) => { for (const k of Object.values(s.skills)) k.card.due = new Date(Date.now() - 86400000); });
+    plan = buildSession(get());
+    expect(plan.filter((x) => x.kind === 'review').length).toBe(SYNTH_REVIEW_CAP); expect(plan.some((x) => x.kind === 'lesson')).toBe(true);
+    expect(plan.filter((x) => x.kind === 'review').reduce((a, x: any) => a + x.n, 0)).toBeLessThanOrEqual(SYNTH_REVIEW_CAP * 2);
+    set((s) => { s.profile.mode = 'music'; });
   });
 });
