@@ -1,3 +1,4 @@
+import './synth-setup';
 import { describe, it, expect } from 'vitest';
 import { P, midi, intervalName, scale, pname, chordTones, key, rnMap, diatonic, keyScale, mulberry, addInterval, allKeys } from '../src/music';
 import { parseNotes, totalBeats, barLen, measures, onsets, mk } from '../src/passage';
@@ -135,7 +136,7 @@ describe('content', () => {
       for (const st of l.steps) { expect(st.t.split(/\s+/).length, l.id + ' step too long').toBeLessThanOrEqual(60); if (st.try) expect(EX[st.try.ex], l.id).toBeTruthy(); if (st.fig && 'staff' in st.fig) parseNotes(st.fig.staff); }
       for (const n of l.needs ?? []) expect(LESSONS.find((x) => x.id === n), l.id + ' needs ' + n).toBeTruthy();
     }
-    expect(Object.keys(EX).length).toBe(41);
+    expect(Object.keys(EX).length).toBe(42);
   });
   it('every skill preset generates valid questions', () => {
     const all = [...Object.values(SKILLS).map((k) => ({ ex: k.ex, preset: k.preset, id: k.id })), ...LESSONS.flatMap((l) => [...(l.quiz ?? []), ...l.steps.filter((s) => s.try).map((s) => s.try!)].map((q) => ({ ...q, id: l.id })))];

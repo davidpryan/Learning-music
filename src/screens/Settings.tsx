@@ -92,8 +92,12 @@ export function Settings() {
           <label><input type="checkbox" checked={st.theme === 'dark'} onChange={(e) => up((x) => { x.theme = e.target.checked ? 'dark' : 'light'; })} />Dark theme</label>
           <label><input type="checkbox" checked={st.reducedMotion} onChange={(e) => up((x) => { x.reducedMotion = e.target.checked; })} />Reduce motion</label></div>
       </section>
-      <section className="card line col"><h2>Daily goal</h2>
+      <section className="card line col"><h2>Daily goals</h2>
+        <div className="bold small">Music daily goal</div>
         <div className="seg" role="group" aria-label="Daily goal">{([5, 10, 20] as const).map((g) => <button key={g} aria-pressed={s.profile.dailyGoalMin === g} onClick={() => set((x) => { x.profile.dailyGoalMin = g; })}>{g} min</button>)}</div>
+        <div className="bold small">Synth daily goal</div>
+        <div className="seg" role="group" aria-label="Synth daily goal">{([5, 10, 20] as const).map((g) => <button key={g} aria-pressed={(s.profile.synthGoalMin ?? 10) === g} onClick={() => set((x) => { x.profile.synthGoalMin = g; })}>{g} min</button>)}</div>
+        <div className="small muted">Music and synth each have their own goal. Time counts toward the mode you are in, and meeting either goal keeps your streak.</div>
       </section>
       <section className="card line col"><h2>Your data</h2>
         <div className="small muted">Everything is stored only in this browser. Export a copy now and then, and to move to another device.</div>

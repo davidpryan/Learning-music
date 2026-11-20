@@ -15,14 +15,15 @@ export interface Attempt { t: number; skill: string; ex: string; ctx: string; c:
 export interface State {
   v: number;
   profile: {
-    xp: number; dailyGoalMin: 5 | 10 | 20; streak: number; lastGoalDate: string; freezeWeek: string; badges: string[];
+    xp: number; dailyGoalMin: 5 | 10 | 20; synthGoalMin: 5 | 10 | 20; streak: number; lastGoalDate: string; freezeWeek: string; badges: string[];
     mode: 'music' | 'synth'; latency: Record<string, number>; voiceRange: [number, number] | null; micGate: number; onboarded: boolean; settings: Settings;
   };
   skills: Record<string, SkillState>;
   lessons: Record<string, { passedAt?: number; best: number }>;
   attempts: Attempt[];
   bests: Record<string, number>; stars: Record<string, number>; highs: Record<string, number>;
-  days: Record<string, { min: number; xp: number; goal: boolean }>;
+  /** min and goal are music mode's minutes and goal for the day; smin and sgoal are synth mode's. */
+  days: Record<string, { min: number; xp: number; goal: boolean; smin?: number; sgoal?: boolean }>;
   presets: Record<string, { name: string; params: any }[]>;
   keyQuest: string[]; tempo: Record<string, { bpm: number; pass: number; fail: number }>;
   counters: Record<string, number>; synthPatches: { name: string; patch: Record<string, number> }[]; userPieces: { id: string; title: string; xml: string }[]; dailyLog: { d: string; game: string; score: number }[];
@@ -31,7 +32,7 @@ export const SCHEMA = 1;
 export const defaults = (): State => ({
   v: SCHEMA,
   profile: {
-    xp: 0, mode: 'music', dailyGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
+    xp: 0, mode: 'music', dailyGoalMin: 10, synthGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
     settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false, sfx: true },
   },
   skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [],

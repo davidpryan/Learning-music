@@ -6,7 +6,7 @@ import { modeTracks, TRACK_NAME } from '../content';
 import { Sheet, TopBar, Icon } from '../ui/common';
 import { parseMusicXml } from '../musicxml';
 
-const PERF = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6', 'S5', 'S6', 'S7', 'S10', 'S12'];
+const PERF = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6', 'S5', 'S6', 'S7', 'S10', 'S12', 'S15'];
 export function ParamForm({ ex, value, onChange }: { ex: ExDef; value: Record<string, any>; onChange: (v: Record<string, any>) => void }) {
   const up = (k: string, v: any) => onChange({ ...value, [k]: v });
   return (

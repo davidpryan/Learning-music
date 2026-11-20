@@ -4,24 +4,25 @@ import { Rng, pick, shuffle, rint } from '../music';
 import { Patch, SeqNote, PD, mkPatch, norm, denorm, fmt, isChoice, isStepped } from './dsp';
 import { features } from './analysis';
 import { play, playSeries } from './live';
-import { QUIZ, FLOW, XLATE, RECIPES } from './bank';
+import { QUIZ, FLOW, SKINS, PANEL_SETS, RECIPES } from './bank';
 
 // ---------- phrases the exercises play ----------
 export const SEQS: Record<string, { n: SeqNote[]; loop: number }> = {
-  hold: { n: [{ t: 0, d: 1.2, note: 48 }], loop: 1.9 },
-  low: { n: [{ t: 0, d: 1.2, note: 36 }], loop: 1.9 },
-  high: { n: [{ t: 0, d: 1.2, note: 60 }], loop: 1.9 },
-  gate: { n: [{ t: 0, d: 1.0, note: 48 }], loop: 2.4 },
-  long: { n: [{ t: 0, d: 2.4, note: 48 }], loop: 3.2 },
-  stab: { n: [0, 0.5, 1, 1.5].map((t) => ({ t, d: 0.14, note: 48 })), loop: 2 },
-  pluck: { n: [48, 55, 60, 55].map((note, i) => ({ t: i * 0.4, d: 0.3, note })), loop: 1.8 },
-  riff: { n: [36, 36, 48, 36, 39, 36, 46, 48].map((note, i) => ({ t: i * 0.25, d: 0.2, note })), loop: 2 },
-  chord: { n: [48, 55, 64].map((note) => ({ t: 0, d: 1.6, note })), loop: 2.4 },
-  lead: { n: [60, 62, 64, 67, 64].map((note, i) => ({ t: i * 0.4, d: 0.38, note })), loop: 2.4 },
-  slide: { n: [{ t: 0, d: 0.9, note: 48 }, { t: 0.7, d: 0.9, note: 60 }], loop: 2.2 },
-  vel: { n: [0.25, 1, 0.25, 1].map((vel, i) => ({ t: i * 0.5, d: 0.4, note: 48, vel })), loop: 2.2 },
-  keys: { n: [36, 48, 60, 72].map((note, i) => ({ t: i * 0.5, d: 0.4, note })), loop: 2.4 },
-  drum: { n: [0, 0.5, 1, 1.5].map((t) => ({ t, d: 0.1, note: 36 })), loop: 2 },
+  // Pitched around middle C and above: phone speakers reproduce very little below about 150 Hz.
+  hold: { n: [{ t: 0, d: 1.2, note: 60 }], loop: 1.9 },
+  low: { n: [{ t: 0, d: 1.2, note: 48 }], loop: 1.9 },
+  high: { n: [{ t: 0, d: 1.2, note: 72 }], loop: 1.9 },
+  gate: { n: [{ t: 0, d: 1.0, note: 60 }], loop: 2.4 },
+  long: { n: [{ t: 0, d: 2.4, note: 60 }], loop: 3.2 },
+  stab: { n: [0, 0.5, 1, 1.5].map((t) => ({ t, d: 0.14, note: 60 })), loop: 2 },
+  pluck: { n: [60, 67, 72, 67].map((note, i) => ({ t: i * 0.4, d: 0.3, note })), loop: 1.8 },
+  riff: { n: [48, 48, 60, 48, 51, 48, 58, 60].map((note, i) => ({ t: i * 0.25, d: 0.2, note })), loop: 2 },
+  chord: { n: [60, 67, 76].map((note) => ({ t: 0, d: 1.6, note })), loop: 2.4 },
+  lead: { n: [72, 74, 76, 79, 76].map((note, i) => ({ t: i * 0.4, d: 0.38, note })), loop: 2.4 },
+  slide: { n: [{ t: 0, d: 0.9, note: 60 }, { t: 0.7, d: 0.9, note: 72 }], loop: 2.2 },
+  vel: { n: [0.25, 1, 0.25, 1].map((vel, i) => ({ t: i * 0.5, d: 0.4, note: 60, vel })), loop: 2.2 },
+  keys: { n: [48, 60, 72, 84].map((note, i) => ({ t: i * 0.5, d: 0.4, note })), loop: 2.4 },
+  drum: { n: [0, 0.5, 1, 1.5].map((t) => ({ t, d: 0.1, note: 48 })), loop: 2 },
 };
 export const seqOf = (name?: string) => SEQS[name ?? 'hold'] ?? SEQS.hold;
 const one = (p: Patch, seq?: string) => () => play(p, seqOf(seq).n);
@@ -128,7 +129,34 @@ def({ id: 'S12', name: 'Recipe', blurb: 'Build a named kind of sound from a shor
   } });
 
 def({ id: 'S13', name: 'Quick-fire concepts', blurb: 'Fast checks on what each part of a synth does.', target: 7000, defaults: { topic: 'sound' }, gen: (p, r) => bankQ(QUIZ[p.topic] ?? QUIZ.sound, r, 'q') });
-def({ id: 'S14', name: 'Translate', blurb: 'Other synths use other names for the same controls. Find the one you know.', target: 7000, defaults: { set: 'basic' }, gen: (p, r) => { const q = pick(r, XLATE[p.set] ?? XLATE.basic); return slots(`Another synth labels a control "${q[0]}". Which control is that here?`, [{ label: 'Answer', choices: shuffle(r, q.slice(1)), value: q[1] }], 'x' + q[0], `"${q[0]}" is ${q[1].toLowerCase()}.`); } });
+/** What each control does, for the question "turn the … up". */
+const OURS: Record<string, string> = { o1oct: 'oscillator octave', o2det: 'oscillator 2 detune', nlvl: 'noise level', pw: 'pulse width', sublvl: 'sub oscillator level', cut: 'filter cutoff', res: 'resonance', fenv: 'filter envelope amount', fd: 'filter envelope decay', ktrk: 'filter key tracking', aa: 'amp attack', ad: 'amp decay', as: 'amp sustain', ar: 'amp release', glide: 'glide', l1r: 'LFO rate', l1p: 'vibrato depth (LFO to pitch)', l1f: 'LFO to cutoff', l1fade: 'LFO fade-in', cho: 'chorus', dist: 'distortion', dly: 'delay mix', dfb: 'delay feedback', rev: 'reverb mix', uspread: 'unison spread' };
+def({ id: 'S14', name: 'Translate', blurb: 'Another synth, another panel, other names. Find the control you know and turn it.', target: 15000, defaults: { set: 'basic' },
+  gen: (p, r) => {
+    const skin = (p.skin ?? pick(r, ['row', 'sliders', 'menu'])) as 'row' | 'sliders' | 'menu', sk = SKINS[skin], pool = (PANEL_SETS[p.set] ?? PANEL_SETS.basic).filter((id) => sk.labels[id]);
+    const others = shuffle(r, Object.keys(sk.labels).filter((id) => !pool.includes(id))), target = pick(r, pool), ctls = shuffle(r, [target, ...shuffle(r, pool.filter((id) => id !== target)).slice(0, 2), ...others.slice(0, 2)]);
+    const start = mkPatch({ cut: 1500, res: 0.3, fenv: 0.3, fd: 0.3, o1w: 3, l1p: 0.3, l1r: 5, dly: 0.3, as: 0.6, ad: 0.3 });
+    for (const id of ctls) if (!isStepped(id)) start[id] = denorm(id, 0.5);
+    const up = r() < 0.5;
+    return { prompt: `This is ${sk.name}. Turn the ${OURS[target]} ${up ? 'up' : 'down'}.`, sub: 'The labels are this synth\'s own. Move only the one control. Listen as you turn.', answer: { kind: 'panel', skin, ctls, labels: sk.labels, target, up, start, seq: ['aa', 'ad', 'as', 'ar', 'fenv', 'fd'].includes(target) ? 'gate' : target === 'glide' ? 'slide' : target === 'ktrk' ? 'keys' : 'long' }, item: skin + target, explain: `"${sk.labels[target]}" is this synth's name for the ${OURS[target]}.` };
+  } });
+
+// ---------- the step sequencer ----------
+/** Turn a row of steps (semitones above the base note, or null for a rest) into a looping phrase. A slide ties a step into the next. */
+export function stepsToSeq(steps: (number | null)[], base = 60, stepSec = 0.25, slides: boolean[] = []): { n: SeqNote[]; loop: number } {
+  const n: SeqNote[] = []; steps.forEach((v, i) => { if (v != null) n.push({ t: i * stepSec, d: stepSec * (slides[i] ? 1.2 : 0.8), note: base + v }); });
+  return { n, loop: steps.length * stepSec };
+}
+def({ id: 'S15', name: 'Program the pattern', blurb: 'Hear a looping pattern and enter it into the step sequencer.', target: 0, defaults: { len: 8, pitches: [0, 3, 7, 12], rests: 0.25, base: 60, patch: { mono: 1, ad: 0.2, as: 0.3, cut: 2500, ar: 0.08 }, stepSec: 0.25 },
+  gen: (p, r) => {
+    const target: (number | null)[] = Array.from({ length: p.len }, (_, i) => (i > 0 && r() < p.rests ? null : pick(r, p.pitches as number[])));
+    return { prompt: 'Program the pattern you hear.', sub: 'Each column is one step in time. Tap a square to put a note there; tap it again for a rest.', answer: { kind: 'pattern', target, pitches: p.pitches, base: p.base, patch: mkPatch(p.patch), stepSec: p.stepSec }, item: 'len' + p.len, explain: 'The pattern is shown in the grid.' };
+  } });
+/** Did the learner move the asked-for control the asked-for way, and leave the rest alone? */
+export function gradePanel(a: { ctls: string[]; target: string; up: boolean; start: Patch }, mine: Patch): boolean {
+  const d = (id: string) => norm(id, mine[id]) - norm(id, a.start[id]);
+  return (a.up ? d(a.target) >= 0.12 : d(a.target) <= -0.12) && a.ctls.every((id) => id === a.target || Math.abs(d(id)) < 0.1);
+}
 
 // ---------- grading a match ----------
 export interface MatchResult { ok: boolean; score: number; worst: string | null; up: boolean; say: string }

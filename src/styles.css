@@ -193,3 +193,28 @@ table.simple { width: 100%; border-collapse: collapse; font-size: 14px; } table.
 .tb-trace figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--soft); margin-top: 4px; }
 .choice .tb-trace { margin-top: 6px; pointer-events: none; } .choice .tb-trace figcaption { display: none; } .choice .tb-trace svg { height: 84px; border: 0; }
 :root[data-motion='reduced'] * { transition: none !important; animation: none !important; }
+
+/* step sequencer grid */
+.tb-grid { display: grid; gap: 4px; }
+.tb-grid-h { text-align: center; font-size: 12.8px; color: var(--soft); }
+.tb-cell { height: 40px; min-width: 0; padding: 0; border: 0; border-radius: 8px; background: var(--sand); }
+.card .tb-cell { background: var(--paper); }
+.tb-cell[aria-pressed='true'] { background: var(--hue); box-shadow: 0 3px 0 var(--hue-deep); }
+.tb-cell.aim { outline: 3px solid var(--ink); outline-offset: -3px; }
+/* other synths' panels */
+.tb-rowpanel { gap: 10px 4px; }
+.tb-rowpanel .tb-knob { width: 100px; }
+.tb-rowpanel .tb-knob-label { font-size: 13px; min-height: 32px; display: flex; align-items: flex-end; }
+.tb-rowpanel .tb-knob-value { display: none; }
+.tb-rowpanel .tb-knob-disc > span { width: 12px; height: 12px; }
+.tb-faders { display: flex; justify-content: space-around; gap: 6px; }
+.tb-fader { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 48px; flex: 1; padding: 6px 0; }
+.tb-fader-track { position: relative; width: 10px; background: var(--paper); }
+.tb-fader-cap { position: absolute; left: -19px; width: 48px; height: 24px; border-radius: 8px; background: var(--hue); box-shadow: 0 4px 0 var(--hue-deep); touch-action: none; cursor: ns-resize; }
+.tb-fader-label { font-size: 13px; text-align: center; line-height: 1.15; min-height: 30px; }
+.tb-fader.is-focus, .tb-menu-row.is-focus { outline: 4px solid var(--ink); outline-offset: 2px; }
+.tb-menu { display: flex; flex-direction: column; }
+.tb-menu-row { display: flex; align-items: center; gap: 8px; min-height: 58px; border-bottom: 2px solid var(--paper); font-size: 15px; }
+.tb-menu-row:last-child { border-bottom: 0; }
+.tb-menu-row b { min-width: 34px; text-align: right; }
+.tb-menu-row .tb-chip { min-width: 46px; padding: 0; font-size: 20px; }

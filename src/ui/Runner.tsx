@@ -14,7 +14,7 @@ import { CFG } from '../config';
 import { Keyboard, KeyMark } from './Keyboard';
 import { Icon, InputSwitch, MicBar, MidiBar } from './common';
 import { Performer, PerfExtra } from './Perform';
-import { MatchArea, VizView } from '../synth/ui';
+import { MatchArea, VizView, PatternArea, PanelArea } from '../synthload';
 
 export interface RunItem { ex: string; preset: Record<string, any>; skillId?: string }
 export interface RunnerProps {
@@ -80,8 +80,8 @@ export function Runner(p: RunnerProps) {
         <div className="row">
           <span className="chip" aria-label={`Question ${i + 1} of ${p.count}`}>{i + 1} / {p.count > 900 ? '∞' : p.count}</span>
           <span className="grow" />
-          {!isPerf && <button className="btn sm" style={res ? { visibility: 'hidden' } : undefined} onClick={() => setHint(true)} disabled={hint || !!res}><Icon name="hint" size={14} />Hint</button>}
-          {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : a.kind === 'match' ? 'Give up' : 'Show answer'}</button>}
+          {!isPerf && a.kind !== 'pattern' && a.kind !== 'panel' && <button className="btn sm" style={res ? { visibility: 'hidden' } : undefined} onClick={() => setHint(true)} disabled={hint || !!res}><Icon name="hint" size={14} />Hint</button>}
+          {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : a.kind === 'match' || a.kind === 'pattern' ? 'Give up' : 'Show answer'}</button>}
         </div>
       )}
       <div>
@@ -103,6 +103,8 @@ export function Runner(p: RunnerProps) {
         </>
       )}
       {a.kind === 'match' && <MatchArea key={`m${i}`} q={q} a={a} done={!!res} ok={res?.ok} hint={hint} onHint={() => setHint(true)} onFinish={(ok) => finish(ok, 'synth')} />}
+      {a.kind === 'pattern' && <PatternArea key={`t${i}`} a={a} done={!!res} ok={res?.ok} onHint={() => setHint(true)} onFinish={(ok) => finish(ok, 'synth')} />}
+      {a.kind === 'panel' && <PanelArea key={`n${i}`} a={a} done={!!res} ok={res?.ok} onFinish={(ok) => finish(ok, 'synth')} />}
       {a.kind === 'slots' && <SlotsArea key={`s${i}`} slots={a.slots} done={!!res} hint={hint} onFinish={(ok) => finish(ok, 'choice')} />}
       {isPerf && (
         <>

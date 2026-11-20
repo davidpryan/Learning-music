@@ -1,12 +1,11 @@
 import { THEORY_A } from './theory1';
 import { THEORY_B } from './theory2';
 import { READING, EAR } from './tracks';
-import { SYNTH_A } from './synth1';
-import { SYNTH_B } from './synth2';
 import type { Lesson } from './types';
-export const SYNTH: Lesson[] = [...SYNTH_A, ...SYNTH_B];
-export const LESSONS: Lesson[] = [...THEORY_A, ...THEORY_B, ...READING, ...EAR, ...SYNTH];
+/** The music lessons. Synth mode's 103 lessons are added by addLessons when its bundle loads. */
+export const LESSONS: Lesson[] = [...THEORY_A, ...THEORY_B, ...READING, ...EAR];
 export const LESSON_BY_ID: Record<string, Lesson> = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
+export function addLessons(ls: Lesson[]) { for (const l of ls) if (!LESSON_BY_ID[l.id]) { LESSONS.push(l); LESSON_BY_ID[l.id] = l; } }
 /** The music tracks. Synth mode has one track of its own. */
 export const TRACKS = ['theory', 'reading', 'ear'] as const;
 export const ALL_TRACKS = ['theory', 'reading', 'ear', 'synth'] as const;

@@ -1,5 +1,5 @@
 // Synth mode, units 7 to 12: voices, effects, recipes, FM and friends, other engines, and reading any synth.
-import { s, tr, Lesson } from './types';
+import { s, tr, u, Lesson } from './types';
 import { Y, P, pf, pn, ab, nm, chg, m1, mN, scratch, pic, flow, recipe, quiz, xl } from './synth1';
 import { RECIPES } from '../synth/bank';
 
@@ -150,21 +150,22 @@ export const SYNTH_B: Lesson[] = [
     s('In FM there is often no filter. Brightness is the FM amount, so to make a note start bright and mellow out, you put an envelope on the amount.', pn(['fmd', 'fmi'], { ...FM, fmi: 4, fmd: 0.5 }, undefined, 'gate')),
     s('FM decay sets how quickly the amount falls away after each note starts. It does the job a filter envelope does on a subtractive synth.', pf('Steady FM', { ...FM, fmi: 4 }, undefined, 'gate', { fmd: 0.7 }, 'FM that decays')),
   ], [ab('Faster or slower FM decay', 'fmd', { ...FM, fmi: 4 }, { seq: 'gate', lo: 0.2, hi: 0.95, gap: 0.35 }), chg('Amount, ratio or decay?', ['fmi', 'fmr', 'fmd'], { ...FM, fmi: 2.5, fmr: 1, fmd: 0.4 }, 'gate')], ['fmd']),
-  Y('10.6', 10, 'Algorithms and feedback', [
-    s('An algorithm is how the operators are wired. Stacked, the modulator shapes the carrier and is not heard. Side by side, both are heard and nothing is modulated: two plain tones.', pf('Stack', { ...FM, fmi: 3, fmr: 2 }, 'spectrum', 'hold', { fma: 1 }, 'Side by side')),
-    s('Feedback sends an operator back into itself. A little turns its sine toward a saw. A lot turns it to noise.', pn(['fmf', 'fma'], { ...FM, fmi: 1 }, 'wave')),
-  ], [nm('Stack or side by side', 'How are the two operators wired?', [['Stack: one modulates the other', { fma: 0 }], ['Side by side: two plain tones', { fma: 1 }]], { ...FM, fmi: 3, fmr: 2 }), ab('More or less feedback', 'fmf', { ...FM, fmi: 1.5 }, { lo: 0, hi: 1, gap: 0.5 })], ['fma', 'fmf']),
+  Y('10.6', 10, 'Four operators and algorithms', [
+    s('FM synths call each sine oscillator an operator. So far you have used two. Real FM sounds use four or more. Operators 3 and 4 work just like operator 2: an amount, a ratio and a decay each.', pn(['f3i', 'f3r', 'fma'], { ...FM, fmi: 2, f3i: 2, f3r: 2 }, 'spectrum')),
+    s('An algorithm is how the operators are wired. In a stack, 4 pushes 3, 3 pushes 2, and 2 pushes the carrier: very bright and complex. Side by side, nobody pushes anybody: four plain tones, like an organ.', pf('Stack', { ...FM, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }, 'spectrum', 'hold', { fma: 1 }, 'Side by side')),
+    s('In between are the useful ones. Two pairs gives two separate two-operator sounds on one key. Three into one sends three modulators into one carrier, each adding its own harmonics.', pf('Two pairs', { ...FM, fma: 2, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }, 'spectrum', 'hold', { fma: 3 }, 'Three into one')),
+  ], [nm('Name the algorithm', 'Four operators are on. How are they wired?', [['Stack: a chain of four', { fma: 0 }], ['Side by side: four plain tones', { fma: 1 }], ['Two pairs', { fma: 2 }]], { ...FM, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }), ab('More or less of operator 3', 'f3i', { ...FM, fma: 3, fmi: 1.5, f3r: 4 }, { lo: 0, hi: 0.8, gap: 0.35 }), quiz('Operators and algorithms', 'fm')], ['fma', 'f3i', 'f3r', 'f3d', 'f4i', 'f4r', 'f4d']),
   Y('10.7', 10, 'FM bell', [
-    s('Bells are FM\'s party trick. A high ratio gives the clang, no sustain makes it a strike, and a long decay and release let it ring.', pf('An FM bell', eg('fmbell'), 'spectrum', 'pluck')),
-    s('Let the FM amount decay a little too, so the clang softens as the bell rings on.'),
-  ], [recipe('Build an FM bell', 'fmbell')]),
+    s('Bells are FM\'s party trick. A bell has partials that do not line up neatly, so use three into one with operators 2 and 3 at different high ratios.', pf('An FM bell', eg('fmbell'), 'spectrum', 'pluck')),
+    s('No sustain makes it a strike. A long decay and release let it ring. Feedback on operator 2 adds a rough edge to the clang.', pn(['fmf'], eg('fmbell'), undefined, 'pluck')),
+  ], [recipe('Build an FM bell', 'fmbell'), ab('More or less feedback', 'fmf', { ...FM, fmi: 1.5 }, { lo: 0, hi: 1, gap: 0.5 })], ['fmf']),
   Y('10.8', 10, 'FM electric piano', [
-    s('The FM electric piano is on thousands of records. A sine carrier, a low whole-number ratio, and an FM amount that starts high and decays: a bright "tine" that mellows at once.', pf('An FM electric piano', eg('fmep'), undefined, 'pluck')),
-    s('Lower the sustain so the note fades while held, like a struck instrument.'),
+    s('The FM electric piano is on thousands of records, and it is two sounds at once. One pair of operators makes a mellow body. The other pair makes a bright "tine" that lasts an instant.', pf('An FM electric piano', eg('fmep'), undefined, 'pluck')),
+    s('With the two pairs algorithm, operator 3 is heard directly, so its decay is how fast the tine fades. Operator 4 pushes operator 3 to brighten it.', pf('Body only', { ...eg('fmep'), f3i: 0 }, 'spectrum', 'pluck', { f3i: 2 }, 'Body and tine')),
   ], [recipe('Build an FM electric piano', 'fmep')]),
   Y('10.9', 10, 'FM bass', [
-    s('FM basses are punchy and hard-edged. Plenty of FM amount with a fast decay gives a bright knock at the start of each note, over a solid sine.', pf('An FM bass', eg('fmbass'), undefined, 'riff')),
-    s('Keep the ratio at 1 or 0.5 so the weight stays on the note itself.'),
+    s('FM basses are punchy and hard-edged. Stack operator 3 on operator 2 and give both a fast decay: a bright knock at the start of each note, over a solid sine.', pf('An FM bass', eg('fmbass'), undefined, 'riff')),
+    s('Keep operator 2 at ratio 1 or 0.5 so the weight stays on the note itself.'),
   ], [recipe('Build an FM bass', 'fmbass')]),
   Y('10.10', 10, 'FM review', [
     s('FM in one line: amount sets how bright, ratio sets what kind of bright, and decay sets how the brightness changes over the note.'),
@@ -229,8 +230,9 @@ export const SYNTH_B: Lesson[] = [
   ], [quiz('CV and gate', 'cv'), flow('Patch it by hand', 'cv')]),
   Y('12.4', 12, 'Arpeggiator and sequencer', [
     s('An arpeggiator takes the keys you hold and plays them one at a time, in time with the tempo. Hold a chord and it becomes a pattern.', pn(['arp', 'arpr'], { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }, undefined, 'chord')),
-    s('A step sequencer stores a note for each step of a short loop and plays it back for ever. Bass lines, including the acid line from unit 9, are usually sequenced.', pf('Up', { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }, undefined, 'chord', { arp: 4 }, 'Random')),
-  ], [nm('Name the arpeggiator pattern', 'A three-note chord is held. Which pattern is the arpeggiator playing?', [['Up', { arp: 1 }], ['Down', { arp: 2 }], ['Up and down', { arp: 3 }]], { ad: 0.15, as: 0.3, cut: 2500 }, 'chord'), quiz('Arpeggiators and sequencers', 'seq')], ['arp', 'arpr']),
+    s('A step sequencer stores a note, or a rest, for each step of a short loop and plays it round and round. Bass lines, including the acid line from unit 9, are usually sequenced. Program one by ear.', undefined, tr('S15', { len: 4, rests: 0 })),
+    s('The arpeggiator has patterns of its own: up, down, up and down, or random.', pf('Up', { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }, undefined, 'chord', { arp: 4 }, 'Random')),
+  ], [nm('Name the arpeggiator pattern', 'A three-note chord is held. Which pattern is the arpeggiator playing?', [['Up', { arp: 1 }], ['Down', { arp: 2 }], ['Up and down', { arp: 3 }]], { ad: 0.15, as: 0.3, cut: 2500 }, 'chord'), u('S15', 'Program a pattern', {}), quiz('Arpeggiators and sequencers', 'seq')], ['arp', 'arpr']),
   Y('12.5', 12, 'MIDI and CC', [
     s('MIDI is the language keyboards, computers and synths use to talk. It carries no sound: only messages such as "note 60 on, velocity 90" and "note 60 off".'),
     s('Control change messages, CCs, carry knob movements: CC 1 is the mod wheel, CC 74 is often cutoff. Any synth, hardware or software, can be played and automated this way. This app can be played from a MIDI keyboard for the same reason.'),

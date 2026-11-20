@@ -4,7 +4,7 @@ import '../synth/exercises'; // registers exercises S1 to S14 before the skills 
 
 export type P = Record<string, number>;
 const TOPIC = ['', 'sound', 'osc', 'filter', 'env', 'shape', 'lfo', 'voices', 'fx', 'fx', 'fm', 'engines', 'panel'];
-const SLOW = ['S6', 'S7', 'S10', 'S12'];
+const SLOW = ['S6', 'S7', 'S10', 'S12', 'S15'];
 /** A synth lesson. Its 5-question check asks each slow exercise (a full match or a recipe) once and fills the rest with quick ones. */
 export const Y = (id: string, level: number, title: string, steps: Step[], unlocks: Unlock[], adds: string[] = []): Lesson => {
   const quick = unlocks.filter((x) => !SLOW.includes(x.ex)), fill = quick.length ? quick : [{ ex: 'S13', preset: { topic: TOPIC[level] } }];
@@ -36,9 +36,9 @@ export const SYNTH_A: Lesson[] = [
   // ---------------- Unit 1: Sound itself ----------------
   Y('1.1', 1, 'Pitch is speed', [
     s('Sound is air vibrating. A synthesizer makes that vibration with electronics, and you shape it. Press play to hear the simplest sound there is.', pf('A plain tone', { o1w: 0 })),
-    s('How fast the air vibrates sets the pitch. Faster is higher. We count the speed in hertz (Hz): vibrations per second.', pf('Slower: low', { o1w: 0 }, 'wave', 'low', { o1oct: 2 }, 'Faster: high')),
-    s('Doubling the speed raises the note by exactly one octave. Try telling two notes apart.', undefined, tr('S1', { ctl: ['o1oct'], base: { o1w: 0 } })),
-  ], [ab('Higher or lower', 'o1oct', { o1w: 0 }, { gap: 0.25 }), quiz('What sound is', 'sound')]),
+    s('How fast the air vibrates sets the pitch. Faster is higher. We count the speed in hertz (Hz): vibrations per second.', pf('Slower: lower', { o1w: 0 }, 'wave', 'hold', { o1oct: 1 }, 'Faster: higher')),
+    s('Doubling the speed raises the note by exactly one octave. Try telling two notes apart.', undefined, tr('S1', { ctl: ['o1oct'], base: { o1w: 0 }, lo: 0.5, hi: 1, gap: 0.25 })),
+  ], [ab('Higher or lower', 'o1oct', { o1w: 0 }, { lo: 0.5, hi: 1, gap: 0.25 }), quiz('What sound is', 'sound')]),
   Y('1.2', 1, 'Loudness is size', [
     s('How far the air swings sets the loudness. A bigger swing is louder. The size of the swing is called amplitude.', pf('Quiet', { o1w: 0, vol: 0.25 }, 'wave', 'hold', { vol: 0.8 }, 'Loud')),
     s('Pitch and loudness are separate. You can change one without touching the other. Turn the volume and listen: the note stays the same.', pn(['vol'], { o1w: 0 })),

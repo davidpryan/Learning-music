@@ -12,8 +12,9 @@ export function fftMag(x: Float32Array): Float32Array {
   }
   const out = new Float32Array(n / 2); for (let i = 0; i < n / 2; i++) out[i] = Math.hypot(re[i], im[i]) / (n / 4); return out;
 }
-export const HOLD: SeqNote[] = [{ t: 0, d: 1.2, note: 48 }];
+export const HOLD: SeqNote[] = [{ t: 0, d: 1.2, note: 60 }];
 const SR = 22050, N = 4096, cache = new Map<string, any>();
+export const clearAnalysis = () => cache.clear();
 const memo = <T,>(key: string, f: () => T): T => { if (!cache.has(key)) { if (cache.size > 300) cache.clear(); cache.set(key, f()); } return cache.get(key); };
 const keyOf = (p: Patch, seq: SeqNote[]) => JSON.stringify(p) + JSON.stringify(seq);
 const dry = (p: Patch): Patch => ({ ...p, dly: 0, rev: 0 });
@@ -35,7 +36,7 @@ export function spectrum(p: Patch, seq: SeqNote[] = HOLD, bins = 56): number[] {
 /** Two cycles of the held waveform, -1 to 1. */
 export function waveform(p: Patch, seq: SeqNote[] = HOLD, points = 160): number[] {
   return memo('w' + points + keyOf(p, seq), () => {
-    const sr = 44100, note = seq[0]?.note ?? 48, hz = 440 * Math.pow(2, (note - 69) / 12), per = sr / hz, at = Math.min(0.4, (seq[0]?.d ?? 1) * 0.5), buf = renderOffline(dry({ ...p, uni: 1, l1p: 0 }), seq, at + (3 * per) / sr + 0.05, sr);
+    const sr = 44100, note = seq[0]?.note ?? 60, hz = 440 * Math.pow(2, (note - 69) / 12), per = sr / hz, at = Math.min(0.4, (seq[0]?.d ?? 1) * 0.5), buf = renderOffline(dry({ ...p, uni: 1, l1p: 0 }), seq, at + (3 * per) / sr + 0.05, sr);
     let st = Math.floor(at * sr); for (let i = st; i < st + per; i++) if (buf[i] <= 0 && buf[i + 1] > 0) { st = i; break; }
     // Loud sounds fill the picture; quiet ones are drawn smaller, so loudness can be seen.
     let pk = 0.3; for (let i = 0; i < 2 * per; i++) pk = Math.max(pk, Math.abs(buf[st + i] || 0));
@@ -52,7 +53,7 @@ export function loudness(p: Patch, seq: SeqNote[], seconds: number, points = 120
 }
 export interface Features { centroid: number; attack: number; sustain: number; tail: number; level: number; low: number }
 /** Measured from a 0.8 s note followed by 0.8 s of silence. */
-export function features(p: Patch, note = 48): Features {
+export function features(p: Patch, note = 60): Features {
   return memo('f' + note + JSON.stringify(p), () => {
     const buf = renderOffline(p, [{ t: 0, d: 0.8, note }], 1.6, SR), env: number[] = [], hop = 220;
     for (let i = 0; i + hop <= buf.length; i += hop) { let m = 0; for (let j = 0; j < hop; j++) m += buf[i + j] * buf[i + j]; env.push(Math.sqrt(m / hop)); }

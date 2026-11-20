@@ -6,7 +6,7 @@ import { playSeq, click, now, stopAll } from '../audio';
 import { Keyboard } from './Keyboard';
 import { P, midi } from '../music';
 import type { Fig } from '../content/types';
-import { PanelFig, PatchFig } from '../synth/ui';
+import { PanelFig, PatchFig } from '../synthload';
 import { micState, midiState, onInputState, startMic, stopMic, initMidi } from '../input';
 import { get, set, useS, InputMode } from '../store';
 

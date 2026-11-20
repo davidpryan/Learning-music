@@ -40,7 +40,7 @@ export function Progress() {
             : <div className="small muted">Nothing stands out yet. Skills under 85% accuracy will appear here with a one-tap drill.</div>}
         </div>
         <div className="card line col"><div className="row between"><h2 style={{ margin: 0 }}>Practice calendar</h2><span className="chip">{liveStreak(s)} day streak</span></div>
-          <div className="cal" role="img" aria-label={`Practice calendar for the last five weeks. Goal met on ${cal.filter((d) => s.days[d]?.goal).length} days.`}>{cal.map((d) => { const x = s.days[d]; return <div key={d} className={x?.goal ? 'goal' : x && x.min > 0.5 ? 'some' : ''} title={`${d}: ${Math.floor(x?.min ?? 0)} min`}>{+d.slice(8)}</div>; })}</div>
+          <div className="cal" role="img" aria-label={`Practice calendar for the last five weeks. A goal was met on ${cal.filter((d) => s.days[d]?.goal || s.days[d]?.sgoal).length} days.`}>{cal.map((d) => { const x = s.days[d]; return <div key={d} className={x?.goal || x?.sgoal ? 'goal' : x && x.min + (x.smin ?? 0) > 0.5 ? 'some' : ''} title={`${d}: ${Math.floor(x?.min ?? 0)} min music, ${Math.floor(x?.smin ?? 0)} min synth`}>{+d.slice(8)}</div>; })}</div>
           <div className="small muted">Filled: goal met. Tinted: some practice.</div>
         </div>
         <div className="card line col"><h2>Badges · {s.profile.badges.length} of {BADGES.length}</h2>

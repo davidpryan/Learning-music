@@ -5,10 +5,13 @@ import { BADGES } from './content/badges';
 import { EX } from './exercises';
 import { CFG, TITLES } from './config';
 import { State, SkillState, get, set, dayKey, addDays, weekKey } from './store';
+import { loadSynth } from './synthload';
 
 export interface Skill { id: string; lessonId: string; track: Track; level: number; title: string; ex: string; preset: Record<string, any>; target: number }
 export const SKILLS: Record<string, Skill> = {};
-for (const l of LESSONS) l.unlocks.forEach((u, i) => { const id = `${l.id}:${i}`; SKILLS[id] = { id, lessonId: l.id, track: l.track, level: l.level, title: u.title, ex: u.ex, preset: u.preset, target: EX[u.ex].target }; });
+/** Add the skills that a set of lessons unlocks. Called for the music lessons here, and for the synth lessons when their bundle loads. */
+export function registerLessons(ls: Lesson[]) { for (const l of ls) l.unlocks.forEach((u, i) => { const id = `${l.id}:${i}`; SKILLS[id] = { id, lessonId: l.id, track: l.track, level: l.level, title: u.title, ex: u.ex, preset: u.preset, target: EX[u.ex].target }; }); }
+registerLessons(LESSONS);
 export const skillsOf = (lessonId: string) => Object.values(SKILLS).filter((k) => k.lessonId === lessonId);
 
 const F = fsrs(generatorParameters({ enable_fuzz: false }));
@@ -56,10 +59,11 @@ export function gateFor(s: State, t: Track): { lesson: Lesson; todo: Skill[]; re
 }
 export const PERFORM_EX = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'];
 /** Exercises with no quick answer to time: no 60-second sprint. */
-export const SLOW_EX = [...PERFORM_EX, 'S5', 'S6', 'S7', 'S10', 'S12'];
+export const SLOW_EX = [...PERFORM_EX, 'S5', 'S6', 'S7', 'S10', 'S12', 'S15'];
 /** Controls the lessons passed so far have introduced, in lesson order. */
 export function synthControls(s: State): string[] { const out: string[] = []; for (const l of LESSONS) if (l.adds && s.lessons[l.id]?.passedAt) for (const c of l.adds) if (!out.includes(c)) out.push(c); return out; }
-export function setMode(m: 'music' | 'synth') { set((s) => { s.profile.mode = m; }); }
+/** Switch between music and synth. Synth mode is downloaded the first time it is chosen. */
+export function setMode(m: 'music' | 'synth') { (m === 'synth' ? loadSynth() : Promise.resolve()).then(() => set((s) => { s.profile.mode = m; })); }
 /** A drill over several skills: quick-answer ones together, or at-tempo ones together. */
 export function drillFor(skills: Skill[]): { items: { ex: string; preset: Record<string, any>; skillId: string }[]; count: number } {
   if (skills.length && skills.every((k) => SLOW_EX.includes(k.ex) && k.track === 'synth')) return { items: skills.map((k) => ({ ex: k.ex, preset: k.preset, skillId: k.id })), count: Math.min(6, Math.max(3, skills.length * 2)) };
@@ -158,12 +162,19 @@ export function reportTempo(key: string, base: number, pass: boolean) {
 }
 
 // ---------- time, goal, streak ----------
+/** Today's minutes, target and whether the goal is met, for one mode. Music and synth each have their own daily goal. */
+export function dayProgress(s: State, mode = s.profile.mode, d = dayKey()): { min: number; target: number; goal: boolean } {
+  const day = s.days[d];
+  return mode === 'synth' ? { min: day?.smin ?? 0, target: s.profile.synthGoalMin ?? 10, goal: !!day?.sgoal } : { min: day?.min ?? 0, target: s.profile.dailyGoalMin, goal: !!day?.goal };
+}
+/** Time counts toward the goal of the mode you are in. Meeting either mode's goal keeps the one shared streak going. */
 export function addMinutes(min: number) {
   set((s) => {
-    const d = dayKey(), day = (s.days[d] = s.days[d] ?? { min: 0, xp: 0, goal: false });
-    day.min += min;
-    if (!day.goal && day.min >= s.profile.dailyGoalMin) {
-      day.goal = true; const p = s.profile, y = addDays(d, -1), y2 = addDays(d, -2);
+    const d = dayKey(), day = (s.days[d] = s.days[d] ?? { min: 0, xp: 0, goal: false }), synth = s.profile.mode === 'synth';
+    if (synth) day.smin = (day.smin ?? 0) + min; else day.min += min;
+    const met = synth ? !day.sgoal && (day.smin ?? 0) >= (s.profile.synthGoalMin ?? 10) : !day.goal && day.min >= s.profile.dailyGoalMin;
+    if (met) {
+      if (synth) day.sgoal = true; else day.goal = true; const p = s.profile, y = addDays(d, -1), y2 = addDays(d, -2);
       if (p.lastGoalDate === y) p.streak += 1;
       else if (p.lastGoalDate === y2 && p.freezeWeek !== weekKey(d)) { p.streak += 1; p.freezeWeek = weekKey(d); }
       else if (p.lastGoalDate !== d) p.streak = 1;
@@ -239,8 +250,9 @@ export function buildSession(s: State): SessionItem[] {
   const ear = Object.values(SKILLS).filter((k) => k.track === 'ear' && TRACKS.includes('ear') && s.skills[k.id] && !isPerform(k));
   if (ear.length) out.push({ kind: 'ear', skill: ear[ear.length - 1], n: CFG.earSetSize });
   // 4b. in synth mode, a short set of matching by ear on the newest match skill
-  const match = Object.values(SKILLS).filter((k) => k.track === 'synth' && s.skills[k.id] && ['S5', 'S6', 'S7', 'S10', 'S12'].includes(k.ex) && TRACKS.includes('synth'));
+  const match = Object.values(SKILLS).filter((k) => k.track === 'synth' && s.skills[k.id] && ['S5', 'S6', 'S7', 'S10', 'S12', 'S15'].includes(k.ex) && TRACKS.includes('synth'));
   if (match.length) out.push({ kind: 'review', skill: match[match.length - 1], n: 3 });
+  if (TRACKS.includes('synth') && Object.values(SKILLS).some((k) => k.track === 'synth' && s.skills[k.id] && ['S1', 'S2', 'S3', 'S4', 'S8', 'S11'].includes(k.ex))) { out.push({ kind: 'game', game: 's-name', why: 'A quick round of listening to finish.' }); return out; }
   // 5. a suggested game for the weakest skill of the week
   const weak = weakSpots(s)[0];
   const game = weak && gameForSkill(s, weak.skill);

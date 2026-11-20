@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Nav, Route } from './nav';
-import { load, useS, get, dayKey } from './store';
-import { addMinutes, takeNewBadges, playerLevel, playerTitle, liveStreak } from './sched';
+import { load, useS, get, set, dayKey } from './store';
+import { addMinutes, dayProgress, takeNewBadges, playerLevel, playerTitle, liveStreak } from './sched';
 import { sfx } from './audio';
 import { micState } from './input';
 import { Icon } from './ui/common';
@@ -16,7 +16,7 @@ import { Settings } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { Run, Session, Timed } from './screens/Run';
 import { GameScreen } from './games/games';
-import { Sandbox, hasSharedPatch } from './screens/Sandbox';
+import { Sandbox, SynthGame, SynthPlacement, loadSynth, sharedPatch } from './synthload';
 
 const TABS: [Route['n'], string, string][] = [['home', 'Home', 'home'], ['learn', 'Learn', 'learn'], ['practice', 'Practice', 'practice'], ['play', 'Play', 'play'], ['progress', 'Progress', 'progress']];
 const isTab = (n: string) => TABS.some((t) => t[0] === n);
@@ -26,7 +26,16 @@ export default function App() {
   const s = useS();
   const [ready, setReady] = useState(false), [stack, setStack] = useState<{ r: Route; k: number }[]>([{ r: fromHash(), k: 0 }]), [toast, setToast] = useState('');
   const active = useRef(Date.now());
-  useEffect(() => { load().then(() => { micState.gate = get().profile.micGate; setReady(true); if (hasSharedPatch() && get().profile.onboarded) setStack((st) => (st.some((e) => e.r.n === 'sandbox') ? st : [...st, { r: { n: 'sandbox' }, k: 9999 }])); }); }, []);
+  useEffect(() => {
+    load().then(async () => {
+      micState.gate = get().profile.micGate;
+      // Synth mode is a separate download: fetch it now only for someone who uses it, or who arrived on a patch link.
+      const st = get(), usesSynth = st.profile.mode === 'synth' || Object.keys(st.lessons).some((id) => id.startsWith('S')) || !!sharedPatch;
+      if (usesSynth) { try { await loadSynth(); } catch { set((x) => { x.profile.mode = 'music'; }); } }
+      setReady(true);
+      if (sharedPatch && get().profile.onboarded) setStack((s0) => (s0.some((e) => e.r.n === 'sandbox') ? s0 : [...s0, { r: { n: 'sandbox' }, k: 9999 }]));
+    });
+  }, []);
   useEffect(() => {
     const mark = () => { active.current = Date.now(); };
     ['pointerdown', 'keydown'].forEach((e) => window.addEventListener(e, mark, { passive: true }));
@@ -37,15 +46,15 @@ export default function App() {
   }, []);
   const toastTimer = useRef<any>(null);
   const showToast = (t: string, ms = 3500) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), ms); };
-  const seen = useRef({ level: 0, goal: false, init: false });
+  const seen = useRef({ level: 0, goal: false, init: false, mode: 'music' as string });
   useEffect(() => {
-    const b = takeNewBadges(), lv = playerLevel(s.profile.xp), goal = !!s.days[dayKey()]?.goal, was = seen.current;
+    const b = takeNewBadges(), lv = playerLevel(s.profile.xp), goal = dayProgress(s).goal, mode = s.profile.mode, was = seen.current;
     if (ready && was.init) {
       if (b.length) showToast(`Badge earned: ${b.slice(0, 2).join(', ')}${b.length > 2 ? ` and ${b.length - 2} more` : ''}`);
       else if (lv > was.level) { showToast(`Level ${lv} reached · ${playerTitle(s.profile.xp)}`); sfx('win'); }
-      else if (goal && !was.goal) showToast(`Daily goal met · ${liveStreak(s)} day streak`);
+      else if (goal && !was.goal && mode === was.mode) showToast(`${mode === 'synth' ? 'Synth' : 'Music'} goal met · ${liveStreak(s)} day streak`);
     }
-    seen.current = { level: lv, goal, init: ready };
+    seen.current = { level: lv, goal, init: ready, mode };
   }, [s, ready]);
   const top = stack[stack.length - 1].r;
   useEffect(() => { if (isTab(top.n)) { try { if (location.hash !== '#' + top.n) history.replaceState(null, '', '#' + top.n); } catch { /* sandboxed */ } } window.scrollTo(0, 0); }, [top]);
@@ -82,7 +91,8 @@ export default function App() {
       case 'run': return <Run r={r} />;
       case 'timed': return <Timed title={r.title} ex={r.ex} preset={r.preset} highKey={r.highKey} skillId={r.skillId} onExit={nav.back} />;
       case 'sandbox': return <Sandbox onExit={nav.back} />;
-      case 'game': return <GameScreen id={r.id} daily={r.daily} onExit={nav.back} />;
+      case 'splace': return <SynthPlacement onExit={nav.back} />;
+      case 'game': if (r.id.startsWith('s-')) return <SynthGame id={r.id} daily={r.daily} onExit={nav.back} />; return <GameScreen id={r.id} daily={r.daily} onExit={nav.back} />;
       default: return <Home />;
     }
   };

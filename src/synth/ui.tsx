@@ -3,14 +3,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Patch, PD, norm, denorm, fmt, isChoice, isStepped, mkPatch } from './dsp';
 import { spectrum, waveform, loudness } from './analysis';
-import { seqOf, gradeMatch } from './exercises';
+import { seqOf, gradeMatch, gradePanel, stepsToSeq } from './exercises';
 import * as live from './live';
 import type { Answer, Question, VizSpec } from '../exercises';
 import { Icon } from '../ui/common';
 
 const DOTS = Array.from({ length: 11 }, (_, i) => -135 + i * 27);
-export function Knob({ id, value, onChange, target, focus, blind, label }: { id: string; value: number; onChange: (v: number) => void; target?: number; focus?: boolean; blind?: boolean; label?: string }) {
-  const d = PD[id], n = norm(id, value), size = 96, R = size / 2 + 14, c = R + 6, drag = useRef<{ y: number; n: number } | null>(null);
+export function Knob({ id, value, onChange, target, focus, blind, label, size = 96 }: { id: string; value: number; onChange: (v: number) => void; target?: number; focus?: boolean; blind?: boolean; label?: string; size?: number }) {
+  const d = PD[id], n = norm(id, value), R = size / 2 + 14, c = R + 6, drag = useRef<{ y: number; n: number } | null>(null);
   const at = (deg: number, r: number) => ({ left: c + r * Math.sin((deg * Math.PI) / 180), top: c - r * Math.cos((deg * Math.PI) / 180) });
   const step = isStepped(id) ? 1 / (d.max - d.min) : 0.02;
   const set = (x: number) => { const v = denorm(id, x); if (v !== value) onChange(v); };
@@ -143,7 +143,7 @@ export function MatchArea({ q, a, done, ok, hint, onHint, onFinish }: { q: Quest
 }
 
 /** A one-octave-and-a-bit strip of keys that hold for as long as they are pressed, for the free-play synth. */
-export function HoldKeys({ lo = 48, n = 13 }: { lo?: number; n?: number }) {
+export function HoldKeys({ lo = 60, n = 13 }: { lo?: number; n?: number }) {
   const [down, setDown] = useState<number[]>([]);
   const on = (m: number) => { live.noteOn(m); setDown((d) => [...d, m]); }, off = (m: number) => { live.noteOff(m); setDown((d) => d.filter((x) => x !== m)); };
   const black = (m: number) => [1, 3, 6, 8, 10].includes(m % 12), whites = Array.from({ length: n }, (_, i) => lo + i).filter((m) => !black(m));
@@ -154,6 +154,90 @@ export function HoldKeys({ lo = 48, n = 13 }: { lo?: number; n?: number }) {
     <div className="kb" style={{ touchAction: 'none' }}>
       {whites.map((m) => key(m, 'wk'))}
       {Array.from({ length: n }, (_, i) => lo + i).filter(black).map((m) => { const wi = whites.filter((w) => w < m).length; return key(m, 'bk', { left: `calc(${(wi / whites.length) * 100}% - ${(0.3 / whites.length) * 100}%)`, width: `${(0.6 / whites.length) * 100}%` }); })}
+    </div>
+  );
+}
+
+// ---------- the step sequencer grid ----------
+const ROW_NAME = (i: number, n: number) => (n <= 1 ? 'note' : i === 0 ? 'lowest note' : i === n - 1 ? 'highest note' : `note ${i + 1} from the bottom`);
+export function StepGrid({ steps, pitches, onChange, reveal, disabled }: { steps: (number | null)[]; pitches: number[]; onChange: (i: number, v: number | null) => void; reveal?: (number | null)[]; disabled?: boolean }) {
+  const rows = pitches.map((p, i) => ({ p, i })).reverse();
+  return (
+    <div className="tb-grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} role="group" aria-label="Step sequencer">
+      {steps.map((_, c) => <div key={'h' + c} className="tb-grid-h" aria-hidden="true">{c + 1}</div>)}
+      {rows.map(({ p, i }) => steps.map((v, c) => <button key={`${i}-${c}`} className={'tb-cell' + (reveal && reveal[c] === p ? ' aim' : '')} aria-pressed={v === p} disabled={disabled} aria-label={`Step ${c + 1}, ${ROW_NAME(i, pitches.length)}`} onClick={() => onChange(c, v === p ? null : p)} />))}
+    </div>
+  );
+}
+/** Program-the-pattern exercise: hear the target loop, enter it step by step. */
+export function PatternArea({ a, done, ok, onHint, onFinish }: { a: Extract<Answer, { kind: 'pattern' }>; done: boolean; ok?: boolean; onHint: () => void; onFinish: (ok: boolean) => void }) {
+  const [steps, setSteps] = useState<(number | null)[]>(() => a.target.map(() => null)), [playing, setPlaying] = useState<'mine' | 'target' | null>(null), [tries, setTries] = useState(0), [msg, setMsg] = useState('');
+  useEffect(() => () => live.stop(), []);
+  useEffect(() => { if (done) { live.stop(); setPlaying(null); } }, [done]);
+  const start = (st: (number | null)[]) => { const q = stepsToSeq(st, a.base, a.stepSec); if (q.n.length) live.play(a.patch, q.n, q.loop); else live.stop(); };
+  const hear = (w: 'mine' | 'target') => { if (playing === w) { live.stop(); setPlaying(null); return; } start(w === 'mine' ? steps : a.target); setPlaying(w); };
+  // The latest steps are kept in a ref too, so two squares tapped at once both land.
+  const latest = useRef(steps);
+  const change = (i: number, v: number | null) => { if (done) return; const ns = latest.current.slice(); ns[i] = v; latest.current = ns; setSteps(ns); setMsg(''); start(ns); setPlaying('mine'); };
+  const check = () => {
+    const diff = a.target.map((t, i) => (t === steps[i] ? -1 : i)).filter((i) => i >= 0);
+    if (!diff.length) { onFinish(true); return; }
+    if (tries >= 2) { onFinish(false); return; }
+    onHint(); setTries(tries + 1); setMsg(tries === 0 ? `Not yet. ${diff.length} ${diff.length === 1 ? 'step is' : 'steps are'} different.` : `Not yet. Listen again to step ${diff[0] + 1}.`);
+  };
+  return (
+    <div className="col">
+      <div className="row" role="group" aria-label="Listen">
+        <button className="tb-chip grow" aria-pressed={playing === 'target'} onClick={() => hear('target')}>Hear the target</button>
+        <button className="tb-chip grow" aria-pressed={playing === 'mine'} onClick={() => hear('mine')}>Hear mine</button>
+      </div>
+      <StepGrid steps={steps} pitches={a.pitches} onChange={change} reveal={done && ok === false ? a.target : undefined} disabled={done} />
+      <div className="small muted">High notes are at the top. A column with nothing in it is a rest.{done && ok === false ? ' Outlined squares show the target.' : ''}</div>
+      {msg && !done && <div className="feedback bad" role="status" aria-live="polite"><div className="txt"><span>{msg}</span></div></div>}
+      {!done && <button className="btn primary big" onClick={check}>{tries >= 2 ? 'Check (last try)' : 'Check my pattern'}</button>}
+    </div>
+  );
+}
+
+// ---------- other synths' panels ----------
+function Fader({ id, value, onChange, label, focus }: { id: string; value: number; onChange: (v: number) => void; label: string; focus?: boolean }) {
+  const n = norm(id, value), H = 150, drag = useRef<{ y: number; n: number } | null>(null), set = (x: number) => { const v = denorm(id, x); if (v !== value) onChange(v); };
+  return (
+    <div className={'tb-fader' + (focus ? ' is-focus' : '')}>
+      <div className="tb-fader-track" style={{ height: H }}>
+        <div role="slider" tabIndex={0} aria-label={label} aria-orientation="vertical" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(n * 100)} className="tb-fader-cap" style={{ top: (1 - n) * (H - 28) }}
+          onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture(e.pointerId); drag.current = { y: e.clientY, n }; }} onPointerMove={(e) => { if (drag.current) set(drag.current.n + (drag.current.y - e.clientY) / (H - 28)); }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}
+          onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); set(n + 0.04); } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); set(n - 0.04); } }} />
+      </div>
+      <div className="tb-fader-label">{label}</div>
+    </div>
+  );
+}
+export function AltPanel({ skin, ctls, labels, patch, onChange, focus }: { skin: 'row' | 'sliders' | 'menu'; ctls: string[]; labels: Record<string, string>; patch: Patch; onChange: (id: string, v: number) => void; focus?: string | null }) {
+  const step = (id: string, d: number) => onChange(id, denorm(id, norm(id, patch[id]) + (isStepped(id) ? d / (PD[id].max - PD[id].min) : d * 0.06)));
+  if (skin === 'sliders') return <div className="tb-faders">{ctls.map((id) => <Fader key={id} id={id} value={patch[id]} onChange={(v) => onChange(id, v)} label={labels[id]} focus={focus === id} />)}</div>;
+  if (skin === 'menu') return (
+    <div className="tb-menu">{ctls.map((id) => (
+      <div key={id} className={'tb-menu-row' + (focus === id ? ' is-focus' : '')} role="group" aria-label={labels[id]}>
+        <span className="grow">{labels[id]}</span><b aria-live="off">{Math.round(norm(id, patch[id]) * 127)}</b>
+        <button className="tb-chip" aria-label={`${labels[id]} down`} onClick={() => step(id, -1)}>−</button><button className="tb-chip" aria-label={`${labels[id]} up`} onClick={() => step(id, 1)}>+</button>
+      </div>))}
+    </div>
+  );
+  return <div className="tb-controls tb-rowpanel">{ctls.map((id) => <Knob key={id} id={id} value={patch[id]} onChange={(v) => onChange(id, v)} label={labels[id]} focus={focus === id} blind size={64} />)}</div>;
+}
+/** Translate exercise: the asked-for control must be found on another synth's panel and turned the asked-for way. */
+export function PanelArea({ a, done, ok, onFinish }: { a: Extract<Answer, { kind: 'panel' }>; done: boolean; ok?: boolean; onFinish: (ok: boolean) => void }) {
+  const [p, setP] = useState<Patch>(() => ({ ...a.start })), [on, setOn] = useState(false), s = seqOf(a.seq);
+  useEffect(() => () => live.stop(), []);
+  useEffect(() => { if (done) { live.stop(); setOn(false); } }, [done]);
+  const change = (id: string, v: number) => { if (done) return; const np = { ...p, [id]: v }; setP(np); if (on) live.setPatch(np); else { live.play(np, s.n, s.loop); setOn(true); } };
+  const moved = a.ctls.some((id) => p[id] !== a.start[id]);
+  return (
+    <div className="col">
+      <button className="tb-chip" aria-pressed={on} onClick={() => { if (on) live.stop(); else live.play(p, s.n, s.loop); setOn(!on); }}>{on ? 'Stop the sound' : 'Start the sound'}</button>
+      <div className="card"><AltPanel skin={a.skin} ctls={a.ctls} labels={a.labels} patch={p} onChange={change} focus={done && ok === false ? a.target : null} /></div>
+      {!done && <div className="row"><button className="btn grow" disabled={!moved} onClick={() => { setP({ ...a.start }); if (on) live.setPatch(a.start); }}>Put everything back</button><button className="btn primary grow" disabled={!moved} onClick={() => onFinish(gradePanel(a, p))}>Check</button></div>}
     </div>
   );
 }

@@ -19,7 +19,9 @@ export type Answer =
   | { kind: 'slots'; slots: Slot[] }
   | { kind: 'rhythm'; passage: Passage; tempo: number; visual: boolean }
   | { kind: 'perform'; passage: Passage; expect?: Passage; tempo: number; tempoKey?: string }
-  | { kind: 'match'; target: Record<string, number>; start: Record<string, number>; ctls: string[]; seq: string; view: 'wave' | 'spectrum' | 'env' | 'none'; showTarget: boolean; tolK: number; checks?: MatchCheck[]; example?: boolean };
+  | { kind: 'match'; target: Record<string, number>; start: Record<string, number>; ctls: string[]; seq: string; view: 'wave' | 'spectrum' | 'env' | 'none'; showTarget: boolean; tolK: number; checks?: MatchCheck[]; example?: boolean }
+  | { kind: 'pattern'; target: (number | null)[]; pitches: number[]; base: number; patch: Record<string, number>; stepSec: number }
+  | { kind: 'panel'; skin: 'row' | 'sliders' | 'menu'; ctls: string[]; labels: Record<string, string>; target: string; up: boolean; start: Record<string, number>; seq: string };
 export interface Question {
   prompt: string; sub?: string; score?: ScoreSpec; viz?: VizSpec; kb?: number[]; play?: () => number;
   answer: Answer; item: string; explain: string; reveal?: ScoreSpec; kbRange?: [number, number];

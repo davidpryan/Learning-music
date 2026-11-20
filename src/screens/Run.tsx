@@ -5,10 +5,11 @@ import { answerStyle } from '../exercises';
 import { TopBar, Icon, InputSwitch, Stars } from '../ui/common';
 import { sfx } from '../audio';
 import { get, set, useS } from '../store';
-import { buildSession, SessionItem, gameXp } from '../sched';
+import { buildSession, SessionItem, gameXp, dayProgress } from '../sched';
 import { dayKey } from '../store';
 import { LessonView } from './Lesson';
 import { GAMES } from '../games/games';
+import { SYNTH_GAME_NAME } from '../synthload';
 
 export function Done({ title, lines, onAgain, onExit, againLabel = 'Again', stars }: { title: string; lines: string[]; onAgain?: () => void; onExit: () => void; againLabel?: string; stars?: number }) {
   return (
@@ -72,11 +73,11 @@ function SessionRun({ more }: { more: () => void }) {
   const nav = useNav(), s = useS();
   const [items] = useState<SessionItem[]>(() => buildSession(get()));
   const [i, setI] = useState(0), [asked, setAsked] = useState(false), [stop, setStop] = useState(false);
-  const day = s.days[dayKey()], goalMet = !!day?.goal;
+  const day = dayProgress(s), goalMet = day.goal;
   const it = items[i];
   const next = () => setI(i + 1);
   if (!items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Nothing is due" lines={['All caught up', 'Start a lesson from the Learn tab, or play a game.']} onExit={nav.back} /></main></>;
-  if (stop || i >= items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Session complete" lines={[`${Math.floor(day?.min ?? 0)} min today`, goalMet ? 'Daily goal met.' : `${Math.max(1, Math.ceil(s.profile.dailyGoalMin - (day?.min ?? 0)))} min to go for today's goal.`]} onAgain={more} againLabel={goalMet ? 'One more round' : 'Keep going'} onExit={nav.back} /></main></>;
+  if (stop || i >= items.length) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main"><Done title="Session complete" lines={[`${Math.floor(day.min)} min today`, goalMet ? 'Daily goal met.' : `${Math.max(1, Math.ceil(day.target - day.min))} min to go for today's goal.`]} onAgain={more} againLabel={goalMet ? 'One more round' : 'Keep going'} onExit={nav.back} /></main></>;
   if (goalMet && !asked && i > 0) return <><TopBar title="Today's session" onBack={nav.back} /><main className="main col center" style={{ paddingTop: 24 }}><h1>Daily goal reached</h1><p className="muted">{items.length - i} more step{items.length - i > 1 ? 's' : ''} in this session. Everything from here is optional.</p><div className="row"><button className="btn grow" onClick={() => setStop(true)}>Finish</button><button className="btn primary grow" onClick={() => setAsked(true)}>Keep going</button></div></main></>;
   const head = <TopBar title="Today's session" sub={`Step ${i + 1} of ${items.length}`} onBack={nav.back} right={<button className="btn sm ghost" onClick={next}>Skip</button>} />;
   if (it.kind === 'lesson') return <LessonView key={i} id={it.lesson.id} onExit={next} />;
@@ -86,7 +87,7 @@ function SessionRun({ more }: { more: () => void }) {
       {it.kind === 'review' && <><span className="chip accent" style={{ alignSelf: 'flex-start' }}>Review · {it.skill.title}</span><Runner key={i} items={[{ ex: it.skill.ex, preset: it.skill.preset, skillId: it.skill.id }]} count={it.n} ctx="session" onDone={next} /></>}
       {it.kind === 'reading' && <><span className="chip accent" style={{ alignSelf: 'flex-start' }}>Reading · {it.skill.title}</span><Runner key={i} items={[{ ex: it.skill.ex, preset: it.skill.preset, skillId: it.skill.id }]} count={1} ctx="session" onDone={next} /></>}
       {it.kind === 'ear' && <><span className="chip accent" style={{ alignSelf: 'flex-start' }}>Ear · {it.skill.title}</span><Runner key={i} items={[{ ex: it.skill.ex, preset: it.skill.preset, skillId: it.skill.id }]} count={it.n} ctx="session" onDone={next} /></>}
-      {it.kind === 'game' && <div className="col center" style={{ paddingTop: 16 }}><h1>Finish with a game?</h1><p className="muted">{it.why}</p><div className="row"><button className="btn grow" onClick={next}>No thanks</button><button className="btn primary grow" onClick={() => nav.go({ n: 'game', id: it.game })}>Play {GAMES.find((g) => g.id === it.game)?.name}</button></div></div>}
+      {it.kind === 'game' && <div className="col center" style={{ paddingTop: 16 }}><h1>Finish with a game?</h1><p className="muted">{it.why}</p><div className="row"><button className="btn grow" onClick={next}>No thanks</button><button className="btn primary grow" onClick={() => nav.go({ n: 'game', id: it.game })}>Play {GAMES.find((g) => g.id === it.game)?.name ?? SYNTH_GAME_NAME[it.game]}</button></div></div>}
     </main></>
   );
 }

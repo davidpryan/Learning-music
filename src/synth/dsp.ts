@@ -30,7 +30,10 @@ k('dist', 'Distortion', 'Effects', 0, 1, 0, '%', 'lin', 0.12); k('cho', 'Chorus'
 k('dly', 'Delay mix', 'Effects', 0, 1, 0, '%', 'lin', 0.12); k('dtime', 'Delay time', 'Effects', 0.05, 1, 0.3, 's', 'exp', 0.08); k('dfb', 'Delay feedback', 'Effects', 0, 0.9, 0.3, '%', 'lin', 0.12);
 k('rev', 'Reverb mix', 'Effects', 0, 1, 0, '%', 'lin', 0.12); k('rsize', 'Reverb size', 'Effects', 0, 1, 0.5, '%', 'lin', 0.15);
 k('eqlo', 'EQ low', 'Effects', -12, 12, 0, 'dB', 'lin', 0.12); k('eqhi', 'EQ high', 'Effects', -12, 12, 0, 'dB', 'lin', 0.12); k('comp', 'Compressor', 'Effects', 0, 1, 0, '%', 'lin', 0.15); c('fxo', 'Distortion goes', 'Effects', ['First', 'Last']);
-k('fmi', 'FM amount', 'FM', 0, 8, 0, '', 'lin', 0.08); c('fmr', 'Ratio', 'FM', ['0.5', '1', '2', '3', '4', '5', '7'], 1); k('fmd', 'FM decay', 'FM', 0, 1, 0, '%', 'lin', 0.12); k('fmf', 'Feedback', 'FM', 0, 1, 0, '%', 'lin', 0.12); c('fma', 'Algorithm', 'FM', ['Stack', 'Side by side']);
+k('fmi', 'FM amount', 'FM', 0, 8, 0, '', 'lin', 0.08); c('fmr', 'Ratio', 'FM', ['0.5', '1', '2', '3', '4', '5', '7'], 1); k('fmd', 'FM decay', 'FM', 0, 1, 0, '%', 'lin', 0.12); k('fmf', 'Feedback', 'FM', 0, 1, 0, '%', 'lin', 0.12);
+// Four operators: 1 is oscillator 1 (the carrier), 2 is the modulator above, 3 and 4 are below. The algorithm wires them.
+c('fma', 'Algorithm', 'FM', ['Stack', 'Side by side', 'Two pairs', 'Three into one', 'Stack and one', 'Pair and two']);
+for (const o of [3, 4]) { k(`f${o}i`, `Operator ${o} amount`, 'FM', 0, 8, 0, '', 'lin', 0.08); c(`f${o}r`, `Operator ${o} ratio`, 'FM', ['0.5', '1', '2', '3', '4', '5', '7'], 1); k(`f${o}d`, `Operator ${o} decay`, 'FM', 0, 1, 0, '%', 'lin', 0.12); }
 k('ah', 'Harmonics', 'Additive', 1, 16, 8, ''); k('atilt', 'Tilt', 'Additive', 0, 2, 1, '', 'lin', 0.1); k('aeven', 'Even harmonics', 'Additive', 0, 1, 1, '%', 'lin', 0.12);
 k('sstart', 'Start', 'Sampler', 0, 0.9, 0, '%', 'lin', 0.1); c('sloop', 'Loop', 'Sampler', ['Off', 'On']); k('slen', 'Loop length', 'Sampler', 0.02, 0.5, 0.2, 's', 'exp', 0.1);
 k('gpos', 'Position', 'Granular', 0, 1, 0.3, '%', 'lin', 0.1); k('gsize', 'Grain size', 'Granular', 0.01, 0.3, 0.08, 's', 'exp', 0.1); k('gdens', 'Density', 'Granular', 2, 50, 20, '/s', 'exp', 0.1); k('gjit', 'Scatter', 'Granular', 0, 1, 0.1, '%', 'lin', 0.15);
@@ -100,8 +103,11 @@ class Svf {
   }
 }
 /** A short built-in recording for the sampler and granular engines: a breathy attack, then a tone that darkens and wobbles. */
-let SAMPLE: Float32Array | null = null;
+let SAMPLE: Float32Array | null = null, USER: Float32Array | null = null;
+/** Use the learner's own recording (mono, at the engine's sample rate, sounding its natural pitch on middle C), or null for the built-in one. */
+export function setUserSample(d: Float32Array | null) { USER = d && d.length > 64 ? d : null; }
 export function sample(sr: number): Float32Array {
+  if (USER) return USER;
   if (SAMPLE && SAMPLE.length === Math.floor(sr * 1.2)) return SAMPLE;
   const n = Math.floor(sr * 1.2), out = new Float32Array(n); let seed = 7, ph = 0;
   for (let i = 0; i < n; i++) {
@@ -116,7 +122,7 @@ export function sample(sr: number): Float32Array {
 class Voice {
   note = 60; cur = 60; vel = 0.8; gate = false; age = 0; id = 0;
   amp = new Env(); fil = new Env(); menv = 0;
-  ph1 = new Float32Array(5); ph2 = new Float32Array(5); sub = 0; mph = 0; mprev = 0;
+  ph1 = new Float32Array(5); ph2 = new Float32Array(5); sub = 0; mph = 0; mprev = 0; p3 = 0; p4 = 0;
   f1 = new Svf(); f2 = new Svf();
   ks: Float32Array | null = null; ksi = 0; ksn = 0; spos = 0; grains: { p: number; n: number; len: number }[] = []; gclock = 0;
   get live() { return this.amp.st !== 0; }
@@ -154,7 +160,7 @@ export class Engine {
     v.note = note; v.cur = from; v.vel = vel; v.gate = true; v.id = ++this.vid; this.lastNote = note;
     if (!legato) {
       v.age = 0; v.menv = 1; v.amp.on(true); v.fil.on(true);
-      v.mph = 0; v.spos = p.sstart * sample(this.sr).length; v.grains = []; v.gclock = 0;
+      v.mph = 0; v.p3 = 0; v.p4 = 0; v.spos = p.sstart * sample(this.sr).length; v.grains = []; v.gclock = 0;
       if (p.eng === 4) { const n = Math.max(8, Math.round(this.sr / (440 * Math.pow(2, (note - 69) / 12)))); if (!v.ks || v.ks.length < n) v.ks = new Float32Array(n + 4); v.ksn = n; v.ksi = 0; let lp = 0; const br = 1 - p.kdamp * 0.85; for (let i = 0; i < n; i++) { lp += (this.rand() - lp) * br; v.ks[i] = lp; } }
     }
   }
@@ -217,7 +223,9 @@ export class Engine {
       const semis = v.cur - 69 + this.bendV * p.bend + p.penv * v.menv + l1 * (p.l1p + this.wheel * p.mwv) + mP;
       const f0 = 440 * Math.pow(2, semis / 12), f1 = f0 * Math.pow(2, Math.round(p.o1oct)), f2 = f0 * Math.pow(2, Math.round(p.o2oct) + (Math.round(p.o2semi) + p.o2det / 100) / 12);
       const pw = Math.min(0.95, Math.max(0.05, p.pw + l1 * p.l1w + mW)), wt = p.wtpos + mT;
-      const fmIdx = Math.max(0, p.fmi + mF) * (p.fmd > 0.01 ? Math.exp(-(v.age / sr) / (0.03 + 3 * (1 - p.fmd) * (1 - p.fmd))) : 1), fmHz = f1 * FM_RATIO[Math.round(p.fmr)], side = p.fma > 0.5;
+      const fmIdx = Math.max(0, p.fmi + mF) * (p.fmd > 0.01 ? Math.exp(-(v.age / sr) / (0.03 + 3 * (1 - p.fmd) * (1 - p.fmd))) : 1), fmHz = f1 * FM_RATIO[Math.round(p.fmr)], alg = Math.round(p.fma);
+      const fdec = (d: number) => (d > 0.01 ? Math.exp(-(v.age / sr) / (0.03 + 3 * (1 - d) * (1 - d))) : 1), e3 = p.f3i * fdec(p.f3d), e4 = p.f4i * fdec(p.f4d), use34 = e3 > 0.0005 || e4 > 0.0005;
+      const d3 = (f1 * FM_RATIO[Math.round(p.f3r)]) / sr, d4 = (f1 * FM_RATIO[Math.round(p.f4r)]) / sr, lv = (e: number) => Math.min(1, e / 4) * 0.7;
       const fenvV = v.fil.v, velC = p.fvel * (v.vel - 0.5) * 4;
       let fc = p.cut * Math.pow(2, p.fenv * 7 * fenvV + (p.ktrk * (v.note - 60)) / 12 + l1 * p.l1f + mC + velC);
       fc = Math.min(sr * 0.45, Math.max(20, fc)); const g = Math.tan((Math.PI * fc) / sr);
@@ -227,7 +235,10 @@ export class Engine {
         let x = 0;
         if (eng === 0) {
           v.mph += fmHz / sr; if (v.mph >= 1) v.mph -= 1;
-          const mod = Math.sin(TAU * (v.mph + p.fmf * v.mprev * 0.35)); v.mprev = mod; const pm = side ? 0 : (fmIdx * mod) / TAU;
+          let s3 = 0, s4 = 0;
+          if (use34) { v.p3 += d3; if (v.p3 >= 1) v.p3 -= 1; v.p4 += d4; if (v.p4 >= 1) v.p4 -= 1; s4 = Math.sin(TAU * v.p4); s3 = Math.sin(TAU * v.p3 + (alg === 0 || alg === 2 ? e4 * s4 : 0)); }
+          const mod = Math.sin(TAU * (v.mph + p.fmf * v.mprev * 0.35) + (alg === 0 || alg === 4 ? e3 * s3 : 0)); v.mprev = mod;
+          const pm = alg === 1 ? 0 : (fmIdx * mod + (alg === 3 ? e3 * s3 + e4 * s4 : 0)) / TAU;
           for (let u = 0; u < uni; u++) {
             const det = uni > 1 ? Math.pow(2, (p.uspread * ((u / (uni - 1)) * 2 - 1)) / 1200) : 1;
             let a = v.ph1[u] + d1 * det, wrapped = false; if (a >= 1) { a -= 1; wrapped = true; } v.ph1[u] = a;
@@ -236,7 +247,7 @@ export class Engine {
             const s2 = p.o2lvl > 0 || p.ring > 0 ? wave(w2, b, d2, pw, wt) : 0;
             x += (s1 * p.o1lvl + s2 * p.o2lvl + s1 * s2 * p.ring) * un;
           }
-          if (side) x += mod * Math.min(1, fmIdx / 4) * 0.7;
+          if (alg === 1) x += mod * lv(fmIdx) + s3 * lv(e3) + s4 * lv(e4); else if (alg === 2) x += s3 * lv(e3); else if (alg === 4) x += s4 * lv(e4); else if (alg === 5) x += s3 * lv(e3) + s4 * lv(e4);
           if (p.sublvl > 0) { v.sub += dS; if (v.sub >= 1) v.sub -= 1; x += ((v.sub < 0.5 ? 1 : -1) + blep(v.sub, dS) - blep((v.sub + 0.5) % 1, dS)) * p.sublvl; }
           if (p.nlvl > 0) x += this.rand() * p.nlvl;
         } else if (eng === 1) {

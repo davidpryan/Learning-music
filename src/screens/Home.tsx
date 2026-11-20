@@ -1,6 +1,6 @@
 import { useNav } from '../nav';
 import { useS, dayKey, storageNote } from '../store';
-import { dueSkills, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor, setMode } from '../sched';
+import { dayProgress, dueSkills, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor, setMode } from '../sched';
 import { modeTracks, TRACK_NAME } from '../content';
 import { CFG } from '../config';
 import { Icon, Bar, TopBar } from '../ui/common';
@@ -8,7 +8,7 @@ import { dailyChallenge } from '../games/games';
 
 export function Home() {
   const s = useS(), nav = useNav();
-  const day = s.days[dayKey()] ?? { min: 0, xp: 0, goal: false }, goal = s.profile.dailyGoalMin;
+  const day = dayProgress(s), goal = day.target;
   const due = dueSkills(s).length, nl = nextLesson(s), streak = liveStreak(s), xp = s.profile.xp;
   const synth = s.profile.mode === 'synth', TRACKS = modeTracks(s.profile.mode);
   const dc = synth ? null : dailyChallenge(), dcDone = !!s.counters['dailyDone:' + dayKey()];
@@ -27,7 +27,7 @@ export function Home() {
         <div className="card col" style={{ gap: 10 }}>
           <div className="row between">
             <div className="row"><Icon name="flame" /><div><div className="bold">{streak} day streak</div><div className="small muted">One missed day a week is forgiven</div></div></div>
-            <div style={{ textAlign: 'right' }}><div className="bold">{Math.floor(day.min)} / {goal} min</div><div className="small muted">{day.goal ? 'Goal met today' : "Today's goal"}</div></div>
+            <div style={{ textAlign: 'right' }}><div className="bold">{Math.floor(day.min)} / {goal} min</div><div className="small muted">{day.goal ? 'Goal met today' : `Today's ${s.profile.mode === 'synth' ? 'synth' : 'music'} goal`}</div></div>
           </div>
           <Bar v={day.min / goal} ok={day.goal} />
         </div>
@@ -37,7 +37,8 @@ export function Home() {
           <div className="small">3. The app brings each skill back just before you would forget it. A new level opens once most skills of the one before are solid.</div></div>}
         {freshSynth && <div className="card line col" style={{ gap: 6 }}><b>Learn to use a synthesizer</b>
           <div className="small">103 short lessons, from what a sound is to rebuilding sounds by ear. Each one ends with you turning the controls of a real synth.</div>
-          <div className="small">Use headphones if you can. Phone speakers hide bass and small changes in tone.</div></div>}
+          <div className="small">Use headphones if you can. Phone speakers hide bass and small changes in tone.</div>
+          <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => nav.go({ n: 'splace' })}>Already know the basics? Take the placement quiz</button></div>}
         <button className="btn primary big" onClick={() => nav.go({ n: 'session' })}><Icon name="playtri" size={16} />Start today's session · about {goal} min</button>
         {nl && <button className="card tap" onClick={() => nav.go({ n: 'lesson', id: nl.id })}><Icon name="learn" /><span className="grow"><span className="small muted">Continue · {nl.track} lesson {nl.id}</span><br /><b>{nl.title}</b></span><Icon name="playtri" size={14} /></button>}
         {gates.map(({ t, g }) => { const d = drillFor(g!.todo); return (

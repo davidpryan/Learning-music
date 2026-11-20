@@ -11,7 +11,7 @@ No account, no server, no subscription: it is a static site, and your progress i
 - **Three inputs**, interchangeable at any time: an on-screen keyboard (multi-touch, plus computer keys), a microphone (one note at a time, sung or played), and a MIDI keyboard.
 - **Reading at tempo**: a seeded phrase generator with 8 levels, a metronome and count-in, and pitch and rhythm graded separately and marked on the score.
 - **Nine games** that train the same skills and feed the same skill records, with XP, stars, streaks, badges and a date-seeded daily challenge. The two timed games each have four modes (chords, intervals, keys, numerals; degrees, intervals, chord colour, function), and any quick-answer skill can be run as a 60-second sprint.
-- **Synth mode**: 103 lessons in 12 units (sound, oscillators, filters, envelopes, modulation, voices, effects, recipes, FM, wavetable, additive, sampling, granular, a plucked-string model, the mod matrix and reading any synth), 14 exercise types (S1 to S14), and a free-play synth with patch saving and share links. It shares the streak, XP, badges and review scheduler with the music mode.
+- **Synth mode**: 103 lessons in 12 units (sound, oscillators, filters, envelopes, modulation, voices, effects, recipes, four-operator FM, wavetable, additive, sampling, granular, a plucked-string model, the mod matrix and reading any synth), 15 exercise types (S1 to S15), three games (Name That Sound, Knob Rush, Patch Golf) with a daily challenge, a placement quiz, and a free-play synth with a 16-step sequencer, your own samples, patch saving and share links. It shares the streak, XP, badges and review scheduler with the music mode, and has its own daily time goal.
 - **Spaced repetition** (FSRS) decides what to review; a daily session is built for you.
 - **Tools**: circle of fifths, scale and chord finder, interval calculator, staff paper with playback, metronome, tuner.
 - **Your data**: export and import as a JSON file; import your own MusicXML pieces.
@@ -72,6 +72,7 @@ Music is written in a small text notation: `C4 D4/2 r/1 [C4 E4 G4]/2 E4/1.5~ E4/
 
 ## Synth mode
 
+- Synth mode is a separate download (`src/synthpack.ts`), fetched the first time someone chooses Synth; `src/synthload.tsx` is the only door to it from the main bundle. Tests load the synth lessons through `tests/synth-setup.ts`.
 - `src/synth/dsp.ts` is the whole sound engine in plain TypeScript: two oscillators, sub, noise, sync, ring mod, two-operator FM, a wavetable, a multimode 12/24 dB filter, three envelopes, two LFOs, a three-slot mod matrix, unison, glide, an arpeggiator, eight effects, and four other engines. It runs in an audio worklet (`worklet.ts`, driven from `live.ts`) and, unchanged, offline for pictures, grading and tests.
 - Every control has one definition (range, curve, unit, grading tolerance) in `dsp.ts`. The panel, the graders and the exercise generators all read it.
 - Matching is graded on settings, in perceptual units (`gradeMatch` in `src/synth/exercises.ts`). Recipes are graded on a brief: measured features of the rendered sound plus a few settings (`src/synth/bank.ts`).
@@ -84,9 +85,9 @@ The app follows the Toybox style guide, with its Learning extensions: flat solid
 
 ## Known limits
 
-- Synth mode has no games and no placement quiz yet, and it is not split into its own bundle.
-- FM has two operators (stacked or side by side, with feedback), not four. "Translate" (S14) teaches other synths' names for controls in words; it does not show other panel layouts.
-- The sampler and granular engines use one built-in recording.
+- Synth mode has been checked in desktop Chrome only; it has not been tuned on phones or in Safari, and the lessons have not been play-tested for difficulty.
+- A sound you import or record for the sampler is kept only until the app is closed.
+- The synth is mono: unison, chorus and reverb do not spread across the speakers.
 
 - Sounds are synthesised in the browser; there are no sampled instruments.
 - The microphone hears one note at a time. Chords and two-hand playing need the on-screen or a MIDI keyboard.

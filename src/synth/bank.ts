@@ -204,61 +204,56 @@ export const FLOW: Record<string, string[][]> = {
   ],
 };
 
-export const XLATE: Record<string, string[][]> = {
-  basic: [
-    ['VCO', 'Oscillator', 'Filter', 'Amp envelope', 'LFO'], ['DCO', 'Oscillator', 'Delay', 'Filter envelope', 'Noise'], ['VCF', 'Filter', 'Oscillator', 'Amplifier', 'Reverb'], ['VCA', 'Amplifier', 'Filter', 'Oscillator', 'LFO'],
-    ['Frequency (in the filter section)', 'Cutoff', 'Oscillator octave', 'LFO rate', 'Delay time'], ['Emphasis', 'Resonance', 'Volume', 'Attack', 'Drive'], ['Q', 'Resonance', 'Cutoff', 'Sustain', 'Glide'], ['Peak', 'Resonance', 'Volume', 'Attack', 'Octave'],
-    ['Range (16\', 8\', 4\')', 'Oscillator octave', 'Filter slope', 'Reverb size', 'Bend range'], ['Sawtooth / Ramp', 'Saw wave', 'Triangle wave', 'Sine wave', 'Noise'], ['Rectangle', 'Pulse wave', 'Saw wave', 'Sine wave', 'Triangle wave'],
-  ],
-  env: [
-    ['Loudness contour', 'Amp envelope', 'Filter envelope', 'LFO', 'Compressor'], ['Contour amount', 'Filter envelope amount', 'Resonance', 'Volume', 'LFO depth'], ['EG', 'Envelope', 'Equaliser', 'Oscillator', 'Effect'],
-    ['Kybd follow', 'Filter key tracking', 'Glide', 'Legato', 'Velocity'], ['Portamento', 'Glide', 'Vibrato', 'Unison', 'Delay'], ['Fine tune (on oscillator 2)', 'Detune', 'Octave', 'Pulse width', 'Glide'],
-    ['Env mod', 'Filter envelope amount', 'Amp sustain', 'LFO rate', 'Drive'], ['Hold / Single trigger', 'Legato', 'Sync', 'Loop', 'Sustain'],
-  ],
-  mod: [
-    ['Mod generator', 'LFO', 'Envelope', 'Oscillator 2', 'Filter'], ['PWM', 'LFO to pulse width', 'LFO to pitch', 'Pitch envelope', 'Phaser'], ['Speed', 'LFO rate', 'Glide', 'Attack', 'Tempo'], ['Intensity', 'LFO depth', 'Resonance', 'Drive', 'Volume'],
-    ['S&H', 'Random LFO shape', 'Sine LFO shape', 'Sustain', 'Sync'], ['Delay (in the LFO section)', 'LFO fade in', 'Delay time', 'Reverb size', 'Release'], ['Cross mod', 'FM amount', 'Ring mod', 'Chorus', 'Detune'], ['Operator level (on a modulator)', 'FM amount', 'Volume', 'Cutoff', 'Reverb mix'],
-    ['Voices: 1', 'Mono', 'Unison', 'Poly', 'Legato'], ['Wet / Dry', 'Effect mix', 'Feedback', 'Drive', 'Volume'], ['Regen', 'Delay feedback', 'Delay time', 'Reverb size', 'Resonance'],
-  ],
+/** Three other synths' panels: the same engine underneath, their own layout and their own names for the controls. */
+export const SKINS: Record<'row' | 'sliders' | 'menu', { name: string; labels: Record<string, string> }> = {
+  row: { name: 'a 1970s mono synth', labels: { o1oct: 'Range', o2det: 'Fine tune', nlvl: 'Noise volume', cut: 'Cutoff frequency', res: 'Emphasis', fenv: 'Amount of contour', fd: 'Filter decay time', ktrk: 'Keyboard control', aa: 'Loudness attack', ad: 'Loudness decay', as: 'Loudness sustain', glide: 'Glide', l1r: 'Mod rate', l1p: 'Oscillator mod', l1f: 'Filter mod' } },
+  sliders: { name: 'a 1980s poly synth', labels: { pw: 'PW', sublvl: 'Sub', nlvl: 'Noise', cut: 'Freq', res: 'Res', fenv: 'Env', ktrk: 'Kybd', aa: 'A', ad: 'D', as: 'S', ar: 'R', l1r: 'Rate', l1fade: 'Delay time', l1p: 'LFO to DCO', l1f: 'LFO to VCF', cho: 'Chorus', glide: 'Portamento' } },
+  menu: { name: 'a modern digital synth', labels: { cut: 'Filter 1 / Frequency', res: 'Filter 1 / Q', fenv: 'Filter 1 / EG depth', aa: 'Amp EG / Attack', ad: 'Amp EG / Decay', as: 'Amp EG / Sustain', ar: 'Amp EG / Release', l1r: 'LFO 1 / Speed', l1p: 'LFO 1 / Pitch int.', l1f: 'LFO 1 / Cutoff int.', glide: 'Voice / Porta time', uspread: 'Voice / Unison detune', dist: 'FX / Drive', dly: 'FX / Delay wet', dfb: 'FX / Delay regen', rev: 'FX / Reverb wet' } },
+};
+/** Which controls a Translate question may ask for, by how far the course has gone. */
+export const PANEL_SETS: Record<string, string[]> = {
+  basic: ['o1oct', 'nlvl', 'cut', 'res', 'pw', 'sublvl', 'o2det'],
+  env: ['aa', 'ad', 'as', 'ar', 'fenv', 'fd', 'ktrk', 'glide'],
+  mod: ['l1r', 'l1p', 'l1f', 'l1fade', 'cho', 'dist', 'dly', 'dfb', 'rev', 'uspread'],
 };
 
 export interface Recipe { name: string; brief: string; base: Patch; ref: Patch; ctls: string[]; note: number; seq: string; checks: { say: string; test: (p: Patch, f: Features) => boolean }[] }
 export const RECIPES: Record<string, Recipe> = {
-  sub: { name: 'a sub bass', brief: 'A pure, steady low note with no buzz: felt more than heard.', base: {}, ref: { o1w: 0 }, ctls: ['o1w', 'cut', 'aa', 'as', 'ar'], note: 36, seq: 'low', checks: [
+  sub: { name: 'a sub bass', brief: 'A pure, steady low note with no buzz: felt more than heard.', base: {}, ref: { o1w: 0 }, ctls: ['o1w', 'cut', 'aa', 'as', 'ar'], note: 48, seq: 'low', checks: [
     { say: 'Too bright for a sub. Use a sine or triangle, or close the filter', test: (_p, f) => f.centroid < 240 },
     { say: 'A sub holds steady while the key is down. Raise the sustain', test: (_p, f) => f.sustain > 0.6 },
     { say: 'It should start at once. Shorten the attack', test: (_p, f) => f.attack < 0.08 }] },
-  reese: { name: 'a reese bass', brief: 'Two saws, detuned so they beat against each other, darkened by the filter.', base: {}, ref: { o2lvl: 0.8, o2det: 20, cut: 500 }, ctls: ['o1w', 'o2w', 'o2lvl', 'o2det', 'cut', 'res'], note: 36, seq: 'low', checks: [
+  reese: { name: 'a reese bass', brief: 'Two saws, detuned so they beat against each other, darkened by the filter.', base: {}, ref: { o2lvl: 0.8, o2det: 20, cut: 500 }, ctls: ['o1w', 'o2w', 'o2lvl', 'o2det', 'cut', 'res'], note: 48, seq: 'low', checks: [
     { say: 'Bring in the second oscillator', test: (p) => p.o2lvl >= 0.4 },
     { say: 'Detune the second oscillator so the two beat', test: (p) => p.o2det >= 8 },
     { say: 'Darken it: lower the cutoff', test: (_p, f) => f.centroid < 700 }] },
-  acid: { name: 'an acid bass line', brief: 'One voice at a time, sliding between notes, with a squelchy resonant filter that snaps shut on each note.', base: { cut: 2000 }, ref: { cut: 300, res: 0.75, fenv: 0.55, fd: 0.2, mono: 1, leg: 1, glide: 0.08 }, ctls: ['cut', 'res', 'fenv', 'fd', 'mono', 'leg', 'glide'], note: 36, seq: 'riff', checks: [
+  acid: { name: 'an acid bass line', brief: 'One voice at a time, sliding between notes, with a squelchy resonant filter that snaps shut on each note.', base: { cut: 2000 }, ref: { cut: 300, res: 0.75, fenv: 0.55, fd: 0.2, mono: 1, leg: 1, glide: 0.08 }, ctls: ['cut', 'res', 'fenv', 'fd', 'mono', 'leg', 'glide'], note: 48, seq: 'riff', checks: [
     { say: 'Make it mono so notes cannot overlap', test: (p) => p.mono > 0.5 },
     { say: 'It needs more resonance to squelch', test: (p) => p.res >= 0.5 },
     { say: 'Let the filter envelope open the filter on each note', test: (p) => p.fenv >= 0.25 },
     { say: 'Start with the filter lower so the envelope has room to open it', test: (p) => p.cut <= 900 },
     { say: 'Add a little glide', test: (p) => p.glide >= 0.02 && p.glide <= 0.35 }] },
-  pluck: { name: 'a pluck', brief: 'Instant start, then it dies away quickly even while the key is held.', base: {}, ref: { ad: 0.18, as: 0, ar: 0.12, cut: 900, fenv: 0.4, fd: 0.15 }, ctls: ['cut', 'fenv', 'fd', 'ad', 'as', 'ar'], note: 48, seq: 'pluck', checks: [
+  pluck: { name: 'a pluck', brief: 'Instant start, then it dies away quickly even while the key is held.', base: {}, ref: { ad: 0.18, as: 0, ar: 0.12, cut: 900, fenv: 0.4, fd: 0.15 }, ctls: ['cut', 'fenv', 'fd', 'ad', 'as', 'ar'], note: 60, seq: 'pluck', checks: [
     { say: 'It should start at once. Shorten the attack', test: (_p, f) => f.attack < 0.04 },
     { say: 'It should die away while held. Lower the sustain and keep the decay short', test: (_p, f) => f.sustain < 0.25 },
     { say: 'Shorten the release so notes do not smear', test: (_p, f) => f.tail < 0.2 }] },
-  keys: { name: 'a soft keyboard', brief: 'Mellow, quick to speak, fading gently while held, and louder when played harder.', base: {}, ref: { o1w: 1, cut: 1800, ad: 0.7, as: 0.3, ar: 0.25, avel: 0.6 }, ctls: ['o1w', 'cut', 'ad', 'as', 'ar', 'avel'], note: 48, seq: 'vel', checks: [
+  keys: { name: 'a soft keyboard', brief: 'Mellow, quick to speak, fading gently while held, and louder when played harder.', base: {}, ref: { o1w: 1, cut: 1800, ad: 0.7, as: 0.3, ar: 0.25, avel: 0.6 }, ctls: ['o1w', 'cut', 'ad', 'as', 'ar', 'avel'], note: 60, seq: 'vel', checks: [
     { say: 'Too bright. Use a mellower wave or lower the cutoff', test: (_p, f) => f.centroid < 900 },
     { say: 'It should fade while held, but not to nothing. Set sustain somewhere in the lower half', test: (p) => p.as >= 0.1 && p.as <= 0.6 },
     { say: 'Give it a decay you can hear: longer than a pluck', test: (p) => p.ad >= 0.3 },
     { say: 'Make it respond to how hard it is played', test: (p) => p.avel >= 0.4 }] },
-  strings: { name: 'a string pad', brief: 'Swells in, holds, and fades out slowly. Wide and slightly detuned, not too bright.', base: {}, ref: { o2lvl: 0.7, o2det: 12, cut: 1500, aa: 0.5, ar: 1.2, cho: 0.4 }, ctls: ['o2lvl', 'o2det', 'cut', 'aa', 'as', 'ar', 'cho'], note: 48, seq: 'chord', checks: [
+  strings: { name: 'a string pad', brief: 'Swells in, holds, and fades out slowly. Wide and slightly detuned, not too bright.', base: {}, ref: { o2lvl: 0.7, o2det: 12, cut: 1500, aa: 0.5, ar: 1.2, cho: 0.4 }, ctls: ['o2lvl', 'o2det', 'cut', 'aa', 'as', 'ar', 'cho'], note: 60, seq: 'chord', checks: [
     { say: 'Let it swell in. Lengthen the attack', test: (_p, f) => f.attack > 0.15 },
     { say: 'Let it fade out slowly. Lengthen the release', test: (_p, f) => f.tail > 0.25 },
-    { say: 'It should hold while the keys are down. Raise the sustain', test: (_p, f) => f.sustain > 0.6 },
+    { say: 'It should hold while the keys are down. Raise the sustain', test: (p) => p.as >= 0.6 },
     { say: 'Widen it: bring in a detuned second oscillator, or chorus', test: (p) => (p.o2lvl >= 0.3 && p.o2det >= 5) || p.cho >= 0.3 },
     { say: 'Take some brightness off with the filter', test: (p) => p.cut <= 5000 }] },
-  brass: { name: 'a brass stab', brief: 'The tone opens up just after each note starts, then settles: a "bwah".', base: { cut: 2000 }, ref: { cut: 400, fenv: 0.45, fa: 0.08, fd: 0.4, fs: 0.6, aa: 0.03 }, ctls: ['cut', 'fenv', 'fa', 'fd', 'fs', 'aa'], note: 48, seq: 'stab', checks: [
+  brass: { name: 'a brass stab', brief: 'The tone opens up just after each note starts, then settles: a "bwah".', base: { cut: 2000 }, ref: { cut: 400, fenv: 0.45, fa: 0.08, fd: 0.4, fs: 0.6, aa: 0.03 }, ctls: ['cut', 'fenv', 'fa', 'fd', 'fs', 'aa'], note: 60, seq: 'stab', checks: [
     { say: 'Start with the filter lower', test: (p) => p.cut <= 1000 },
     { say: 'Let the filter envelope open the filter', test: (p) => p.fenv >= 0.25 },
     { say: 'Give the filter envelope a short rise you can just hear', test: (p) => p.fa >= 0.03 && p.fa <= 0.3 },
     { say: 'The loudness should still start quickly', test: (p) => p.aa <= 0.12 }] },
-  lead: { name: 'a singing lead', brief: 'One note at a time, sliding between notes, with vibrato that arrives only on held notes.', base: {}, ref: { mono: 1, leg: 1, glide: 0.08, l1r: 5.5, l1p: 0.3, l1fade: 0.5, cut: 4000 }, ctls: ['mono', 'leg', 'glide', 'l1r', 'l1p', 'l1fade', 'cut'], note: 60, seq: 'lead', checks: [
+  lead: { name: 'a singing lead', brief: 'One note at a time, sliding between notes, with vibrato that arrives only on held notes.', base: {}, ref: { mono: 1, leg: 1, glide: 0.08, l1r: 5.5, l1p: 0.3, l1fade: 0.5, cut: 4000 }, ctls: ['mono', 'leg', 'glide', 'l1r', 'l1p', 'l1fade', 'cut'], note: 72, seq: 'lead', checks: [
     { say: 'Make it mono', test: (p) => p.mono > 0.5 },
     { say: 'Add a little glide', test: (p) => p.glide >= 0.02 && p.glide <= 0.35 },
     { say: 'Add some vibrato: LFO to pitch', test: (p) => p.l1p >= 0.1 && p.l1p <= 1.5 },
@@ -268,37 +263,44 @@ export const RECIPES: Record<string, Recipe> = {
     { say: 'Stack more unison voices', test: (p) => p.uni >= 4 },
     { say: 'Spread the voices further apart in tuning', test: (p) => p.uspread >= 15 },
     { say: 'Open the filter: a supersaw is bright', test: (p) => p.cut >= 5000 }] },
-  kick: { name: 'a kick drum', brief: 'A low thump: a sine whose pitch drops very fast at the start, and no sustain.', base: {}, ref: { o1w: 0, penv: 20, pdec: 0.05, ad: 0.25, as: 0, ar: 0.1 }, ctls: ['o1w', 'penv', 'pdec', 'ad', 'as', 'ar'], note: 36, seq: 'drum', checks: [
+  kick: { name: 'a kick drum', brief: 'A low thump: a sine whose pitch drops very fast at the start, and no sustain.', base: {}, ref: { o1w: 0, penv: 20, pdec: 0.05, ad: 0.25, as: 0, ar: 0.1 }, ctls: ['o1w', 'penv', 'pdec', 'ad', 'as', 'ar'], note: 48, seq: 'drum', checks: [
     { say: 'Use a sine or triangle for a clean thump', test: (p) => p.o1w <= 1 },
     { say: 'Make the pitch start well above the note', test: (p) => p.penv >= 8 },
     { say: 'The pitch must drop very fast', test: (p) => p.pdec <= 0.15 },
     { say: 'A drum has no sustain. Lower it and keep the decay short', test: (_p, f) => f.sustain < 0.2 }] },
-  snare: { name: 'a snare', brief: 'A short burst of noise with a little tone underneath.', base: {}, ref: { nlvl: 0.9, o1lvl: 0.3, ad: 0.14, as: 0, ar: 0.08 }, ctls: ['o1lvl', 'nlvl', 'ad', 'as', 'ar'], note: 48, seq: 'drum', checks: [
+  snare: { name: 'a snare', brief: 'A short burst of noise with a little tone underneath.', base: {}, ref: { nlvl: 0.9, o1lvl: 0.3, ad: 0.14, as: 0, ar: 0.08 }, ctls: ['o1lvl', 'nlvl', 'ad', 'as', 'ar'], note: 60, seq: 'drum', checks: [
     { say: 'It needs noise', test: (p) => p.nlvl >= 0.5 },
     { say: 'Turn the oscillator down so the noise leads', test: (p) => p.o1lvl <= 0.6 },
     { say: 'Keep it short: no sustain, quick decay', test: (_p, f) => f.sustain < 0.15 }] },
-  hat: { name: 'a hi-hat', brief: 'Only the top of the noise, and very short.', base: {}, ref: { nlvl: 1, o1lvl: 0, ft: 1, cut: 6000, ad: 0.05, as: 0, ar: 0.04 }, ctls: ['o1lvl', 'nlvl', 'ft', 'cut', 'ad', 'as', 'ar'], note: 48, seq: 'drum', checks: [
+  hat: { name: 'a hi-hat', brief: 'Only the top of the noise, and very short.', base: {}, ref: { nlvl: 1, o1lvl: 0, ft: 1, cut: 6000, ad: 0.05, as: 0, ar: 0.04 }, ctls: ['o1lvl', 'nlvl', 'ft', 'cut', 'ad', 'as', 'ar'], note: 60, seq: 'drum', checks: [
     { say: 'It needs noise, and no oscillator', test: (p) => p.nlvl >= 0.5 && p.o1lvl <= 0.15 },
     { say: 'Use a high-pass filter to keep only the top', test: (p) => Math.round(p.ft) === 1 },
     { say: 'Raise the cutoff until only the sizzle is left', test: (p) => p.cut >= 3000 },
     { say: 'Make it very short', test: (p) => p.as <= 0.1 && p.ad <= 0.15 }] },
-  riser: { name: 'a riser', brief: 'Noise that starts dark and opens up slowly: a build before a drop.', base: {}, ref: { nlvl: 0.9, o1lvl: 0, cut: 300, res: 0.5, fenv: 0.7, fa: 1.5 }, ctls: ['o1lvl', 'nlvl', 'cut', 'res', 'fenv', 'fa'], note: 48, seq: 'long', checks: [
+  riser: { name: 'a riser', brief: 'Noise that starts dark and opens up slowly: a build before a drop.', base: {}, ref: { nlvl: 0.9, o1lvl: 0, cut: 300, res: 0.5, fenv: 0.7, fa: 1.5 }, ctls: ['o1lvl', 'nlvl', 'cut', 'res', 'fenv', 'fa'], note: 60, seq: 'long', checks: [
     { say: 'Use noise as the source', test: (p) => p.nlvl >= 0.4 },
     { say: 'Start with the filter low', test: (p) => p.cut <= 1500 },
     { say: 'Send the filter envelope to the cutoff', test: (p) => p.fenv >= 0.4 },
     { say: 'The filter should open slowly. Lengthen the filter envelope attack', test: (p) => p.fa >= 0.7 }] },
-  fmep: { name: 'an FM electric piano', brief: 'A sine that starts with a bright "tine" and mellows, fading while held.', base: { o1w: 0 }, ref: { fmi: 2.5, fmr: 1, fmd: 0.6, ad: 0.8, as: 0.2, ar: 0.3 }, ctls: ['fmi', 'fmr', 'fmd', 'ad', 'as', 'ar'], note: 60, seq: 'pluck', checks: [
-    { say: 'Add some FM for the bright start', test: (p) => p.fmi >= 1 && p.fmi <= 5 },
-    { say: 'Let the FM amount decay so the tone mellows', test: (p) => p.fmd >= 0.3 },
-    { say: 'Keep the ratio at a low whole number for a clean tone', test: (p) => Math.round(p.fmr) >= 1 && Math.round(p.fmr) <= 3 },
+  fmep: { name: 'an FM electric piano', brief: 'Two pairs of operators. One pair is the mellow body. The other is a bright "tine" that rings for an instant at the start of each note.', base: { o1w: 0 }, ref: { fma: 2, fmi: 1.2, fmr: 1, fmd: 0.5, f3i: 2, f3r: 6, f3d: 0.75, f4i: 1.5, ad: 0.8, as: 0.2, ar: 0.3 }, ctls: ['fma', 'fmi', 'fmr', 'fmd', 'f3i', 'f3r', 'f3d', 'f4i', 'ad', 'as', 'ar'], note: 60, seq: 'pluck', checks: [
+    { say: 'Choose the two pairs algorithm: one pair for the body, one for the tine', test: (p) => Math.round(p.fma) === 2 },
+    { say: 'Give the body a little FM from operator 2', test: (p) => p.fmi >= 0.5 && p.fmi <= 4 },
+    { say: 'Keep the body\'s ratio at a low whole number for a clean tone', test: (p) => Math.round(p.fmr) >= 1 && Math.round(p.fmr) <= 3 },
+    { say: 'Turn up operator 3: it is the tine', test: (p) => p.f3i >= 0.8 },
+    { say: 'Set operator 3 to a high ratio so the tine is bright', test: (p) => Math.round(p.f3r) >= 4 },
+    { say: 'Let the tine die away fast: raise operator 3 decay', test: (p) => p.f3d >= 0.5 },
     { say: 'It should fade while held. Lower the sustain', test: (p) => p.as <= 0.5 }] },
-  fmbell: { name: 'an FM bell', brief: 'A clangy strike that rings on for a long time.', base: { o1w: 0 }, ref: { fmi: 3, fmr: 6, fmd: 0.3, ad: 1.5, as: 0, ar: 1.5 }, ctls: ['fmi', 'fmr', 'fmd', 'ad', 'as', 'ar'], note: 60, seq: 'pluck', checks: [
-    { say: 'Use a high ratio for a clangy, bell-like tone', test: (p) => Math.round(p.fmr) >= 4 },
-    { say: 'It needs more FM', test: (p) => p.fmi >= 1.5 },
+  fmbell: { name: 'an FM bell', brief: 'A clangy strike that rings on for a long time. Three operators at different ratios all push one carrier.', base: { o1w: 0 }, ref: { fma: 3, fmi: 3, fmr: 6, fmd: 0.3, f3i: 2, f3r: 3, ad: 1.5, as: 0, ar: 1.5 }, ctls: ['fma', 'fmi', 'fmr', 'fmd', 'f3i', 'f3r', 'ad', 'as', 'ar'], note: 60, seq: 'pluck', checks: [
+    { say: 'Use a high ratio on operator 2 for a clangy tone', test: (p) => Math.round(p.fmr) >= 4 },
+    { say: 'It needs more FM from operator 2', test: (p) => p.fmi >= 1.5 },
+    { say: 'Choose the three into one algorithm, so each operator adds its own partials', test: (p) => Math.round(p.fma) === 3 },
+    { say: 'Bring in operator 3 at a different ratio from operator 2 for a richer clang', test: (p) => p.f3i >= 1 && Math.round(p.f3r) !== Math.round(p.fmr) },
     { say: 'A bell is struck: no sustain', test: (p) => p.as <= 0.1 },
     { say: 'Let it ring: long decay and release', test: (p) => p.ad >= 0.6 && p.ar >= 0.5 }] },
-  fmbass: { name: 'an FM bass', brief: 'A punchy low note with a hard, bright start that settles at once.', base: { o1w: 0 }, ref: { fmi: 4, fmr: 1, fmd: 0.8, ad: 0.3, as: 0.5 }, ctls: ['fmi', 'fmr', 'fmd', 'ad', 'as'], note: 36, seq: 'riff', checks: [
-    { say: 'It needs plenty of FM for the hard start', test: (p) => p.fmi >= 2 },
+  fmbass: { name: 'an FM bass', brief: 'A punchy low note with a hard, bright start that settles at once. Stack three operators for the bite.', base: { o1w: 0 }, ref: { fma: 0, fmi: 3, fmr: 1, fmd: 0.7, f3i: 2, f3r: 1, f3d: 0.8, ad: 0.3, as: 0.5 }, ctls: ['fma', 'fmi', 'fmr', 'fmd', 'f3i', 'f3r', 'f3d', 'ad', 'as'], note: 48, seq: 'riff', checks: [
+    { say: 'It needs plenty of FM from operator 2 for the hard start', test: (p) => p.fmi >= 2 },
     { say: 'The FM amount should decay fast', test: (p) => p.fmd >= 0.5 },
-    { say: 'Keep the ratio at 0.5 or 1 so the bass stays solid', test: (p) => Math.round(p.fmr) <= 1 }] },
+    { say: 'Keep operator 2 at ratio 0.5 or 1 so the bass stays solid', test: (p) => Math.round(p.fmr) <= 1 },
+    { say: 'Keep the stack algorithm, and turn up operator 3 on top for more bite', test: (p) => Math.round(p.fma) === 0 && p.f3i >= 1 },
+    { say: 'Let operator 3 decay fast too', test: (p) => p.f3d >= 0.5 }] },
 };

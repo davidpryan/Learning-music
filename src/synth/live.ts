@@ -2,7 +2,8 @@
 // Where worklets are unavailable it falls back to rendering each phrase ahead of time.
 import workletUrl from './worklet.ts?worker&url';
 import { ac, synthOut, stopHooks } from '../audio';
-import { Patch, SeqNote, mkPatch, renderOffline } from './dsp';
+import { Patch, SeqNote, mkPatch, renderOffline, setUserSample } from './dsp';
+import { clearAnalysis } from './analysis';
 
 let node: AudioWorkletNode | null = null, loading: Promise<void> | null = null, failed = false, timers: any[] = [], src: AudioBufferSourceNode | null = null, analyser: AnalyserNode | null = null;
 let last: { patch: Patch; seq: SeqNote[]; loop: number } | null = null, rerender: any = null, cur: Patch = mkPatch();
@@ -48,6 +49,9 @@ export function setPatch(patch: Patch) {
   else post({ patch: p });
 }
 export const noteOn = (note: number, vel = 0.8) => { ensure().then(() => { if (node) node.port.postMessage({ patch: cur, on: note, vel }); else bufferPlay(cur, [{ t: 0, d: 0.6, note, vel }], 0); }); };
+/** Swap the recording the sampler and granular engines play. Null returns to the built-in one. */
+export function setSample(d: Float32Array | null) { setUserSample(d); clearAnalysis(); post({ sample: d }); }
+export const sampleRate = () => ac().sampleRate;
 export const noteOff = (note: number) => post({ off: note });
 export const perform = (m: { bend?: number; wheel?: number; after?: number }) => post(m);
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
