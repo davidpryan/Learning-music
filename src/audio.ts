@@ -24,6 +24,10 @@ export function ac(): AudioContext {
   return ctx;
 }
 export const now = () => ac().currentTime;
+/** Where other sound sources (the teaching synth) plug in, so they share the volume setting and the limiter. */
+export const synthOut = (): AudioNode => { ac(); return master; };
+/** Called by stopAll, so anything else making sound stops with it. */
+export const stopHooks: (() => void)[] = [];
 
 // ---- getting sound out on phones ----
 // 1. Browsers only start audio from a tap, so every tap, click and key press makes sure the context is running.
@@ -71,7 +75,7 @@ export function installAudioUnlock() {
 export const audioState = () => (ctx ? ctx.state : 'not started');
 export function setVolumes(v: number, m: number, fx = true) { vol = v; metVol = m; sfxOn = fx; if (ctx) { master.gain.value = v; metGain.gain.value = m; } }
 function track(n: AudioScheduledSourceNode) { live.add(n); n.onended = () => live.delete(n); }
-export function stopAll() { live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
+export function stopAll() { stopHooks.forEach((f) => f()); live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
 
 export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'piano', vel = 0.7, prompt = false, out?: AudioNode) {
   const c = ac(), f = freq(m), g = c.createGain(); g.connect(out ?? master);

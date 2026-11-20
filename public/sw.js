@@ -1,5 +1,5 @@
 // Offline cache: network-first for the page, cache-first for hashed assets.
-const CACHE = 'learning-music-v1';
+const CACHE = 'learning-music-v2';
 self.addEventListener('install', (e) => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html']))); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', (e) => {

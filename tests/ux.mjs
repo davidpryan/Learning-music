@@ -86,7 +86,7 @@ for (const [v, expect] of [['finder', 'Scale or chord'], ['interval', 'First not
 await clickText('', '.topbar .iconbtn'); await sleep(450);
 // settings: dark theme and wide keys
 await clickText('', '[aria-label="Settings"]'); await page.evaluate(() => { [...document.querySelectorAll('.checks label')].find((l) => l.textContent.includes('Dark theme')).querySelector('input').click(); }); await sleep(200);
-check('dark theme applies', await page.evaluate(() => document.documentElement.dataset.theme === 'dark' && getComputedStyle(document.body).backgroundColor === 'rgb(17, 19, 24)')); await shot('10-settings-dark');
+check('dark theme applies', await page.evaluate(() => document.documentElement.dataset.theme === 'dark' && getComputedStyle(document.body).backgroundColor === 'rgb(29, 30, 48)')); await shot('10-settings-dark');
 await clickText('', '.topbar .iconbtn'); await sleep(450); await clickText('Practice', '.tabbar button'); await clickText('Chord identification', '.node'); await clickText('Start', '.sheet .btn.primary'); await sleep(300); await shot('11-dark-exercise');
 await clickText('', '.topbar .iconbtn'); await sleep(450); await clickText('Progress', '.tabbar button'); await sleep(200); await shot('12-progress-dark');
 await clickText('Play', '.tabbar button'); await shot('13-play-dark');

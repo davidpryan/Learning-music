@@ -55,4 +55,4 @@ export function gradePerform(expected: Exp[], played: Played[], tol: number, bea
   Object.values(marks).forEach((m) => counts[m]++);
   return { marks, pitchPct: Math.max(0, right - extras) / n, rhythmPct: onTime / n, extras, counts };
 }
-export const MARK_COLOR: Record<Mark, string> = { ok: '#15803d', early: '#b45309', late: '#b45309', wrong: '#b91c1c', miss: '#9ca3af' };
+export const MARK_COLOR: Record<Mark, string> = { ok: '#008562', early: '#BD6110', late: '#BD6110', wrong: '#6238AC', miss: '#6f6a72' };

@@ -1,25 +1,26 @@
 import { useState } from 'react';
-import { LESSONS, TRACKS, TRACK_NAME, LEVEL_NAME, Track, Lesson } from '../content';
+import { LESSONS, modeTracks, TRACK_NAME, LEVEL_NAME, Track, Lesson } from '../content';
 import { useNav } from '../nav';
 import { useS } from '../store';
-import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, PERFORM_EX } from '../sched';
+import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW_EX } from '../sched';
 import { Icon, Sheet, TopBar, Bar } from '../ui/common';
 
 const ICON: Record<string, string> = { locked: 'lock', available: 'playtri', passed: 'check', mastered: 'star' };
 export function Learn() {
   const s = useS(), nav = useNav();
-  const [track, setTrack] = useState<Track>('theory'), [open, setOpen] = useState<Lesson | null>(null);
+  const TRACKS = modeTracks(s.profile.mode), synth = s.profile.mode === 'synth';
+  const [picked, setTrack] = useState<Track>('theory'), [open, setOpen] = useState<Lesson | null>(null), track = TRACKS.includes(picked) ? picked : TRACKS[0];
   const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
   const column = (t: Track) => {
     const ls = LESSONS.filter((l) => l.track === t), levels = [...new Set(ls.map((l) => l.level))], stt = trackStats(s, t);
     return (
       <div key={t} className="grow">
-        {wide && <h2>{TRACK_NAME[t]}</h2>}
+        {wide && TRACKS.length > 1 && <h2>{TRACK_NAME[t]}</h2>}
         <div className="small muted">{stt.passed} of {stt.lessons} lessons · {stt.mastered} of {stt.skills} skills mastered</div>
         <Bar v={stt.passed / stt.lessons} />
         {levels.map((lv) => (
           <div key={lv}>
-            <div className="level-h">Level {lv} · {LEVEL_NAME[t][lv]}</div>
+            <div className="level-h">{t === 'synth' ? 'Unit' : 'Level'} {lv} · {LEVEL_NAME[t][lv]}</div>
             {ls.filter((l) => l.level === lv).map((l) => {
               const stx = lessonStatus(s, l);
               return <button key={l.id} className={'node ' + stx} onClick={() => setOpen(l)} aria-label={`${l.title}, ${stx}`}><span className="ico"><Icon name={ICON[stx]} size={14} /></span><span className="grow"><span className="small muted">{l.id}</span> {l.title}</span>{(() => { const sk = skillsOf(l.id); if (stx === 'locked' || stx === 'available' || !sk.length) return null; const ok = sk.filter((k) => ['practiced', 'mastered'].includes(s.skills[k.id]?.status ?? '')).length; return <span className={'chip' + (ok === sk.length ? ' ok' : '')} aria-label={`${ok} of ${sk.length} skills practiced`}>{ok}/{sk.length}</span>; })()}</button>;
@@ -33,10 +34,10 @@ export function Learn() {
   const gate = o && ost === 'locked' ? gateFor(s, o.track) : null, gateDrill = gate && gate.lesson.id === o!.id && gate.todo.length ? drillFor(gate.todo) : null;
   return (
     <>
-      <TopBar title="Learn" sub="72 lessons in three tracks" />
-      <main className="main col" style={wide ? { maxWidth: 1100 } : undefined}>
-        {!wide && <div className="seg" role="group" aria-label="Track">{TRACKS.map((t) => <button key={t} aria-pressed={track === t} onClick={() => setTrack(t)}>{TRACK_NAME[t]}</button>)}</div>}
-        <div className="row" style={{ alignItems: 'flex-start', gap: 18 }}>{wide ? TRACKS.map(column) : column(track)}</div>
+      <TopBar title="Learn" sub={synth ? '103 synth lessons in 12 units' : '72 lessons in three tracks'} />
+      <main className="main col" style={wide && TRACKS.length > 1 ? { maxWidth: 1100 } : undefined}>
+        {!wide && TRACKS.length > 1 && <div className="seg" role="group" aria-label="Track">{TRACKS.map((t) => <button key={t} aria-pressed={track === t} onClick={() => setTrack(t)}>{TRACK_NAME[t]}</button>)}</div>}
+        <div className="row" style={{ alignItems: 'flex-start', gap: 18 }}>{wide && TRACKS.length > 1 ? TRACKS.map(column) : column(track)}</div>
       </main>
       {o && (
         <Sheet title={o.title} onClose={() => setOpen(null)}>
@@ -51,8 +52,8 @@ export function Learn() {
               return (
                 <div key={k.id} className="row card line" style={{ padding: 10 }}>
                   <div className="grow"><b>{k.title}</b><div className="small muted">{status === 'locked' ? 'Pass the lesson to unlock' : `${status} · ${n ? acc + '% of last ' + n : 'not practised yet'}`}</div></div>
-                  <button className="btn sm" disabled={!ks} onClick={() => { setOpen(null); nav.go({ n: 'run', title: k.title, sub: 'Skill practice', items: [{ ex: k.ex, preset: k.preset, skillId: k.id }], count: PERFORM_EX.includes(k.ex) ? 3 : 10, ctx: 'practice' }); }}>Practise</button>
-                  {!PERFORM_EX.includes(k.ex) && <button className="btn sm" disabled={!ks} aria-label={`60-second sprint: ${k.title}`} onClick={() => { setOpen(null); nav.go({ n: 'timed', title: k.title, ex: k.ex, preset: k.preset, highKey: 'sprint:' + k.id, skillId: k.id }); }}>Sprint{s.highs['sprint:' + k.id] ? ` · ${s.highs['sprint:' + k.id]}` : ''}</button>}
+                  <button className="btn sm" disabled={!ks} onClick={() => { setOpen(null); nav.go({ n: 'run', title: k.title, sub: 'Skill practice', items: [{ ex: k.ex, preset: k.preset, skillId: k.id }], count: SLOW_EX.includes(k.ex) ? 3 : 10, ctx: 'practice' }); }}>Practise</button>
+                  {!SLOW_EX.includes(k.ex) && <button className="btn sm" disabled={!ks} aria-label={`60-second sprint: ${k.title}`} onClick={() => { setOpen(null); nav.go({ n: 'timed', title: k.title, ex: k.ex, preset: k.preset, highKey: 'sprint:' + k.id, skillId: k.id }); }}>Sprint{s.highs['sprint:' + k.id] ? ` · ${s.highs['sprint:' + k.id]}` : ''}</button>}
                 </div>
               );
             })}

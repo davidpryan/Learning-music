@@ -14,6 +14,7 @@ import { CFG } from '../config';
 import { Keyboard, KeyMark } from './Keyboard';
 import { Icon, InputSwitch, MicBar, MidiBar } from './common';
 import { Performer, PerfExtra } from './Perform';
+import { MatchArea, VizView } from '../synth/ui';
 
 export interface RunItem { ex: string; preset: Record<string, any>; skillId?: string }
 export interface RunnerProps {
@@ -25,6 +26,8 @@ function makeQ(it: RunItem, idx: number, seedBase?: number): Question {
   const params = exParams(it.ex, it.preset);
   const reps = it.skillId ? get().skills[it.skillId]?.recent.length ?? 0 : 0;
   if (EX[it.ex].track === 'ear' && reps > 5) params.rot = true;
+  // Once a one-knob match is familiar, the target's picture is hidden: match by ear alone.
+  if (it.ex === 'S5' && reps > 6) params.show = false;
   // Seeded runs (daily challenge, fixed stages) keep their own history so they stay the same for everyone.
   const bucket = `${it.ex}:${JSON.stringify(it.preset)}` + (seedBase != null ? `:seed${seedBase}` : '');
   if (seedBase != null && idx === 0) forget(bucket);
@@ -78,13 +81,14 @@ export function Runner(p: RunnerProps) {
           <span className="chip" aria-label={`Question ${i + 1} of ${p.count}`}>{i + 1} / {p.count > 900 ? '∞' : p.count}</span>
           <span className="grow" />
           {!isPerf && <button className="btn sm" style={res ? { visibility: 'hidden' } : undefined} onClick={() => setHint(true)} disabled={hint || !!res}><Icon name="hint" size={14} />Hint</button>}
-          {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : 'Show answer'}</button>}
+          {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : a.kind === 'match' ? 'Give up' : 'Show answer'}</button>}
         </div>
       )}
       <div>
         <div className="prompt">{q.prompt}</div>
         {q.sub && <div className="muted small" style={{ marginTop: 2 }}>{q.sub}</div>}
       </div>
+      {q.viz && <VizView v={q.viz} />}
       {q.score && !isPerf && <Score spec={res && !res.ok && q.reveal ? q.reveal : q.score} scale={settings.notationScale} />}
       {q.kb && <Keyboard lo={q.kbRange?.[0] ?? 48} hi={q.kbRange?.[1] ?? 72} marks={Object.fromEntries(q.kb.map((m) => [m, 'accent' as KeyMark]))} display short labels={false} />}
       {/* The sound button keeps one place and one size whether or not the sound has played yet. */}
@@ -98,6 +102,7 @@ export function Runner(p: RunnerProps) {
             : <StepsArea key={`k${i}`} q={q} a={a} mode={mode} done={!!res} ok={res?.ok} labels={hint || undefined} onFinish={finish} />}
         </>
       )}
+      {a.kind === 'match' && <MatchArea key={`m${i}`} q={q} a={a} done={!!res} ok={res?.ok} hint={hint} onHint={() => setHint(true)} onFinish={(ok) => finish(ok, 'synth')} />}
       {a.kind === 'slots' && <SlotsArea key={`s${i}`} slots={a.slots} done={!!res} hint={hint} onFinish={(ok) => finish(ok, 'choice')} />}
       {isPerf && (
         <>
@@ -174,14 +179,14 @@ function SlotsArea({ slots, done, hint, onFinish }: { slots: Slot[]; done: boole
     <div className="col">
       {slots.map((sl, si) => {
         const wrong = sl.choices.filter((c) => c !== sl.value), gone = hint ? wrong.filter((_, j) => j % 2 === 0).slice(0, Math.max(0, wrong.length - 1)) : [];
-        const tight = !sl.scores && sl.choices.every((c) => c.length <= 4);
+        const tight = !sl.scores && !sl.viz && sl.choices.every((c) => c.length <= 4);
         return (
           <div key={si}>
             {slots.length > 1 && <h3>{sl.label}</h3>}
-            <div className={sl.scores ? 'col' : 'choices' + (tight ? ' tight' : '')} role="group" aria-label={sl.label}>
+            <div className={sl.scores || sl.viz ? 'col' : 'choices' + (tight ? ' tight' : '')} role="group" aria-label={sl.label}>
               {sl.choices.map((c, ci) => {
                 const cls = done ? (c === sl.value ? ' right' : pick[si] === c ? ' wrong' : '') : gone.includes(c) ? ' gone' : '';
-                return <button key={c} className={'choice' + cls} aria-pressed={pick[si] === c} disabled={done || gone.includes(c)} onClick={() => choose(si, c)} style={sl.scores ? { textAlign: 'left', padding: 8 } : undefined}>{c}{done && c === sl.value ? ' ✓' : done && pick[si] === c ? ' ✗' : ''}{sl.scores && <Score spec={sl.scores[ci]} />}</button>;
+                return <button key={c} className={'choice' + cls} aria-pressed={pick[si] === c} disabled={done || gone.includes(c)} onClick={() => choose(si, c)} style={sl.scores || sl.viz ? { textAlign: 'left', padding: 8 } : undefined}>{c}{done && c === sl.value ? ' ✓' : done && pick[si] === c ? ' ✗' : ''}{sl.scores && <Score spec={sl.scores[ci]} />}{sl.viz && <VizView v={sl.viz[ci]} />}</button>;
               })}
             </div>
           </div>

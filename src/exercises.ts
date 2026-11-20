@@ -10,18 +10,22 @@ import { genPhrase, genRhythm, LEVELS, patterns } from './gen';
 import { PIECES } from './content/pieces';
 import { get } from './store';
 
-export interface Slot { label: string; choices: string[]; value: string; scores?: ScoreSpec[] }
+export interface VizSpec { kind: 'wave' | 'spectrum' | 'env'; patch: Record<string, number>; seq?: string }
+export interface Slot { label: string; choices: string[]; value: string; scores?: ScoreSpec[]; viz?: VizSpec[] }
+/** A recipe check: one measured feature of the learner's sound must fall inside a range. */
+export interface MatchCheck { say: string; test: (p: Record<string, number>) => boolean }
 export type Answer =
   | { kind: 'steps'; steps: number[][]; octaveFree: boolean; bass?: boolean; alt?: Slot[] }
   | { kind: 'slots'; slots: Slot[] }
   | { kind: 'rhythm'; passage: Passage; tempo: number; visual: boolean }
-  | { kind: 'perform'; passage: Passage; expect?: Passage; tempo: number; tempoKey?: string };
+  | { kind: 'perform'; passage: Passage; expect?: Passage; tempo: number; tempoKey?: string }
+  | { kind: 'match'; target: Record<string, number>; start: Record<string, number>; ctls: string[]; seq: string; view: 'wave' | 'spectrum' | 'env' | 'none'; showTarget: boolean; tolK: number; checks?: MatchCheck[]; example?: boolean };
 export interface Question {
-  prompt: string; sub?: string; score?: ScoreSpec; kb?: number[]; play?: () => number;
+  prompt: string; sub?: string; score?: ScoreSpec; viz?: VizSpec; kb?: number[]; play?: () => number;
   answer: Answer; item: string; explain: string; reveal?: ScoreSpec; kbRange?: [number, number];
 }
 export interface ParamDef { key: string; label: string; type: 'multi' | 'select' | 'bool' | 'num'; options?: [string | number, string][]; min?: number; max?: number; step?: number }
-export interface ExDef { id: string; name: string; track: 'theory' | 'reading' | 'ear'; blurb: string; target: number; params: ParamDef[]; defaults: Record<string, any>; gen: (p: any, r: Rng) => Question }
+export interface ExDef { id: string; name: string; track: 'theory' | 'reading' | 'ear' | 'synth'; blurb: string; target: number; params: ParamDef[]; defaults: Record<string, any>; gen: (p: any, r: Rng) => Question }
 
 // ---------- helpers ----------
 type Clef = 'treble' | 'bass';

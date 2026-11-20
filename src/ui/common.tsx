@@ -6,6 +6,7 @@ import { playSeq, click, now, stopAll } from '../audio';
 import { Keyboard } from './Keyboard';
 import { P, midi } from '../music';
 import type { Fig } from '../content/types';
+import { PanelFig, PatchFig } from '../synth/ui';
 import { micState, midiState, onInputState, startMic, stopMic, initMidi } from '../input';
 import { get, set, useS, InputMode } from '../store';
 
@@ -25,8 +26,8 @@ export function TopBar({ title, sub, onBack, right }: { title: string; sub?: str
   return (
     <header className="topbar"><div className="topbar-in">
       {onBack ? <button className="iconbtn" aria-label="Back" onClick={onBack}><Icon name="back" /></button> : <span style={{ width: 6 }} />}
-      <div className="grow"><div className="title">{title}</div>{sub && <div className="sub">{sub}</div>}</div>{right}
-    </div></header>
+      <h1 className="grow title">{title}</h1>{right}
+    </div>{sub && <div className="status"><div>{sub}</div></div>}</header>
   );
 }
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
@@ -95,6 +96,8 @@ export function figPassage(f: Extract<Fig, { staff: string }>): Passage {
 export const playPassage = (p: Passage, tempo = p.tempo) => playSeq(onsets(p).map((o) => ({ t: o.t, d: o.d, midis: p.staves[o.staff].clef === 'percussion' ? [76] : o.midis })), tempo, p.staves[0].clef === 'percussion' ? 'piano' : get().profile.settings.timbre, 0.05, false);
 function PlayBtn({ onPlay, label }: { onPlay: () => void; label: string }) { return <button className="btn sm" onClick={() => { stopAll(); onPlay(); }}><Icon name="playtri" size={14} />{label}</button>; }
 export function Figure({ fig }: { fig: Fig }) {
+  if ('panel' in fig) return <PanelFig fig={fig} />;
+  if ('patch' in fig) return <PatchFig fig={fig} />;
   if ('staff' in fig) { const p = figPassage(fig); return <div className="col" style={{ gap: 8 }}><Score spec={{ passage: p, showTime: !!fig.time || !!fig.perc }} />{fig.play && <div><PlayBtn label="Listen" onPlay={() => playPassage(p, p.free ? 84 : p.tempo)} /></div>}</div>; }
   if ('kb' in fig) {
     const ms = fig.kb.split(/\s+/).map((n) => midi(P(n))), lo = 12 * Math.floor((Math.min(...ms) - 1) / 12), hi = Math.max(lo + 12, 12 * Math.ceil((Math.max(...ms) + 1) / 12));

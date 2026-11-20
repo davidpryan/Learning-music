@@ -2,11 +2,11 @@ import { useRef, useState } from 'react';
 import { EX_LIST, ExDef, exParams } from '../exercises';
 import { useNav } from '../nav';
 import { set, useS } from '../store';
-import { TRACKS, TRACK_NAME } from '../content';
+import { modeTracks, TRACK_NAME } from '../content';
 import { Sheet, TopBar, Icon } from '../ui/common';
 import { parseMusicXml } from '../musicxml';
 
-const PERF = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'];
+const PERF = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6', 'S5', 'S6', 'S7', 'S10', 'S12'];
 export function ParamForm({ ex, value, onChange }: { ex: ExDef; value: Record<string, any>; onChange: (v: Record<string, any>) => void }) {
   const up = (k: string, v: any) => onChange({ ...value, [k]: v });
   return (
@@ -29,7 +29,7 @@ export function ParamForm({ ex, value, onChange }: { ex: ExDef; value: Record<st
 export function Practice() {
   const s = useS(), nav = useNav();
   const [open, setOpen] = useState<ExDef | null>(null), [params, setParams] = useState<Record<string, any>>({}), [name, setName] = useState(''), [msg, setMsg] = useState('');
-  const file = useRef<HTMLInputElement>(null);
+  const file = useRef<HTMLInputElement>(null), synth = s.profile.mode === 'synth', TRACKS = modeTracks(s.profile.mode);
   const pick = (ex: ExDef) => { setParams(exParams(ex.id)); setOpen(ex); setName(''); };
   const start = (kind: 'drill' | 'challenge' | 'timed') => {
     const ex = open!; setOpen(null);
@@ -43,7 +43,7 @@ export function Practice() {
   };
   return (
     <>
-      <TopBar title="Practice" sub="All 27 exercises, fully adjustable" />
+      <TopBar title="Practice" sub={synth ? '14 synth exercises, free practice' : 'All 27 exercises, fully adjustable'} />
       <main className="main col">
         {TRACKS.map((t) => (
           <section key={t}>
@@ -51,14 +51,15 @@ export function Practice() {
             {EX_LIST.filter((e) => e.track === t).map((e) => <button key={e.id} className="node" onClick={() => pick(e)}><span className="ico">{e.id}</span><span className="grow"><b>{e.name}</b><br /><span className="small muted">{e.blurb}</span></span></button>)}
           </section>
         ))}
-        <section>
+        {synth && <button className="card tap" onClick={() => nav.go({ n: 'sandbox' })}><Icon name="keys" /><span className="grow"><span className="small muted">Free play</span><br /><b>Open the synth</b></span><Icon name="playtri" size={14} /></button>}
+        {!synth && <section>
           <div className="level-h">Your own pieces</div>
           <p className="small muted">Import an uncompressed MusicXML file (.musicxml or .xml) to read it at tempo. It stays on this device.</p>
           <input ref={file} type="file" accept=".musicxml,.xml,application/xml,text/xml" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importXml(f); e.target.value = ''; }} />
           <button className="btn" onClick={() => file.current?.click()}>Import MusicXML</button>
           {msg && <div className="small" role="status" style={{ marginTop: 6 }}>{msg}</div>}
           {s.userPieces.map((u) => <div key={u.id} className="row card line" style={{ padding: 10, marginTop: 6 }}><b className="grow">{u.title}</b><button className="btn sm" onClick={() => nav.go({ n: 'run', title: u.title, sub: 'Your piece', items: [{ ex: 'R4', preset: { piece: u.id } }], count: 1, ctx: 'practice' })}>Play</button><button className="iconbtn" aria-label={`Delete ${u.title}`} onClick={() => set((st) => { st.userPieces = st.userPieces.filter((x) => x.id !== u.id); })}><Icon name="x" size={18} /></button></div>)}
-        </section>
+        </section>}
       </main>
       {open && (
         <Sheet title={open.name} onClose={() => setOpen(null)}>

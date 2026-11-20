@@ -1,6 +1,6 @@
 // Skills, mastery, spaced repetition (FSRS), the daily session, XP, streaks and badges.
 import { fsrs, createEmptyCard, Rating, generatorParameters } from 'ts-fsrs';
-import { LESSONS, LESSON_BY_ID, Lesson, Track, TRACKS } from './content';
+import { LESSONS, LESSON_BY_ID, Lesson, Track, modeTracks } from './content';
 import { BADGES } from './content/badges';
 import { EX } from './exercises';
 import { CFG, TITLES } from './config';
@@ -39,7 +39,7 @@ export function lockReason(s: State, l: Lesson): string {
   const tl = trackLessons(l.track), i = tl.indexOf(l);
   if (i > 0 && !s.lessons[tl[i - 1].id]?.passedAt) return `Pass "${tl[i - 1].title}" first.`;
   const need = (l.needs ?? []).find((n) => !s.lessons[n]?.passedAt);
-  if (need) return `Needs theory lesson ${need}, "${LESSON_BY_ID[need].title}".`;
+  if (need) return `Needs lesson ${need}, "${LESSON_BY_ID[need].title}".`;
   const g = gateFor(s, l.track);
   return g && g.lesson.id === l.id ? `Level ${l.level} opens when ${g.need} of the ${g.total} skills from the level before are at "Practiced" (10 answers at 80% or better). So far: ${g.ready}.` : `Practise the skills from the level before until 80% of them are at "Practiced".`;
 }
@@ -55,13 +55,19 @@ export function gateFor(s: State, t: Track): { lesson: Lesson; todo: Skill[]; re
   return { lesson: l, todo: sk.filter((k) => !done(k)), ready: sk.filter(done).length, need: Math.ceil(sk.length * CFG.levelUnlockShare), total: sk.length };
 }
 export const PERFORM_EX = ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'];
+/** Exercises with no quick answer to time: no 60-second sprint. */
+export const SLOW_EX = [...PERFORM_EX, 'S5', 'S6', 'S7', 'S10', 'S12'];
+/** Controls the lessons passed so far have introduced, in lesson order. */
+export function synthControls(s: State): string[] { const out: string[] = []; for (const l of LESSONS) if (l.adds && s.lessons[l.id]?.passedAt) for (const c of l.adds) if (!out.includes(c)) out.push(c); return out; }
+export function setMode(m: 'music' | 'synth') { set((s) => { s.profile.mode = m; }); }
 /** A drill over several skills: quick-answer ones together, or at-tempo ones together. */
 export function drillFor(skills: Skill[]): { items: { ex: string; preset: Record<string, any>; skillId: string }[]; count: number } {
+  if (skills.length && skills.every((k) => SLOW_EX.includes(k.ex) && k.track === 'synth')) return { items: skills.map((k) => ({ ex: k.ex, preset: k.preset, skillId: k.id })), count: Math.min(6, Math.max(3, skills.length * 2)) };
   const quick = skills.filter((k) => !PERFORM_EX.includes(k.ex)), use = quick.length ? quick : skills;
   return { items: use.map((k) => ({ ex: k.ex, preset: k.preset, skillId: k.id })), count: quick.length ? Math.max(10, Math.min(20, use.length * 4)) : Math.min(6, Math.max(3, use.length * 2)) };
 }
 export function nextLesson(s: State, t?: Track): Lesson | null {
-  const order = t ? [t] : [...TRACKS].sort((a, b) => trackLevel(s, a) - trackLevel(s, b));
+  const order = t ? [t] : [...modeTracks(s.profile.mode)].sort((a, b) => trackLevel(s, a) - trackLevel(s, b));
   for (const tr of order) { const l = trackLessons(tr).find((x) => lessonStatus(s, x) === 'available'); if (l) return l; }
   return null;
 }
@@ -174,8 +180,10 @@ export const playerLevel = (xp: number) => Math.floor(xp / CFG.xpPerLevel) + 1;
 export const playerTitle = (xp: number) => TITLES[Math.min(TITLES.length - 1, Math.floor((playerLevel(xp) - 1) / 3))];
 
 // ---------- reviews and the daily session ----------
+/** Due reviews for the mode the learner is in (music or synth). */
 export function dueSkills(s: State, now = Date.now()): Skill[] {
-  return Object.keys(s.skills).filter((id) => SKILLS[id] && new Date(s.skills[id].card.due).getTime() <= now)
+  const tr = modeTracks(s.profile.mode);
+  return Object.keys(s.skills).filter((id) => SKILLS[id] && tr.includes(SKILLS[id].track) && new Date(s.skills[id].card.due).getTime() <= now)
     .sort((a, b) => new Date(s.skills[a].card.due).getTime() - new Date(s.skills[b].card.due).getTime()).map((id) => SKILLS[id]);
 }
 // ---------- which games fit what has been learned ----------
@@ -211,7 +219,7 @@ const isPerform = (k: Skill) => ['R1', 'R2', 'R3', 'R4', 'R5', 'E6'].includes(k.
 export function buildSession(s: State): SessionItem[] {
   const out: SessionItem[] = [], due = dueSkills(s);
   // 1. due reviews, oldest first, capped, interleaved across tracks
-  const byTrack: Record<string, Skill[]> = { theory: [], reading: [], ear: [] };
+  const TRACKS = modeTracks(s.profile.mode), byTrack: Record<string, Skill[]> = { theory: [], reading: [], ear: [], synth: [] };
   due.filter((k) => !isPerform(k)).slice(0, CFG.sessionReviewCap).forEach((k) => byTrack[k.track].push(k));
   for (let i = 0; i < CFG.sessionReviewCap; i++) for (const t of TRACKS) { const k = byTrack[t][i]; if (k) out.push({ kind: 'review', skill: k, n: 2 }); }
   // 2. one new lesson from the track furthest behind
@@ -222,12 +230,15 @@ export function buildSession(s: State): SessionItem[] {
     else for (const t of TRACKS) { const g = gateFor(s, t); if (g) { g.todo.filter((k) => !isPerform(k)).slice(0, 3).forEach((k) => out.push({ kind: 'review', skill: k, n: 5 })); break; } }
   }
   // 3. three reading passages at the current reading level
-  const reading = Object.values(SKILLS).filter((k) => k.track === 'reading' && s.skills[k.id] && isPerform(k)).sort((a, b) => b.level - a.level);
+  const reading = Object.values(SKILLS).filter((k) => k.track === 'reading' && TRACKS.includes('reading') && s.skills[k.id] && isPerform(k)).sort((a, b) => b.level - a.level);
   const rhythm = reading.find((k) => k.ex === 'R1'), one = reading.find((k) => k.ex === 'R2'), hard = reading.find((k) => k.ex !== 'R1');
   [rhythm, one, hard].forEach((k) => { if (k) out.push({ kind: 'reading', skill: k }); });
   // 4. one ear set on the newest ear skill
-  const ear = Object.values(SKILLS).filter((k) => k.track === 'ear' && s.skills[k.id] && !isPerform(k));
+  const ear = Object.values(SKILLS).filter((k) => k.track === 'ear' && TRACKS.includes('ear') && s.skills[k.id] && !isPerform(k));
   if (ear.length) out.push({ kind: 'ear', skill: ear[ear.length - 1], n: CFG.earSetSize });
+  // 4b. in synth mode, a short set of matching by ear on the newest match skill
+  const match = Object.values(SKILLS).filter((k) => k.track === 'synth' && s.skills[k.id] && ['S5', 'S6', 'S7', 'S10', 'S12'].includes(k.ex) && TRACKS.includes('synth'));
+  if (match.length) out.push({ kind: 'review', skill: match[match.length - 1], n: 3 });
   // 5. a suggested game for the weakest skill of the week
   const weak = weakSpots(s)[0];
   const game = weak && gameForSkill(s, weak.skill);
@@ -235,7 +246,8 @@ export function buildSession(s: State): SessionItem[] {
   return out;
 }
 export function weakSpots(s: State): { skill: Skill; acc: number }[] {
-  return Object.keys(s.skills).filter((id) => SKILLS[id] && s.skills[id].recent.length >= 4)
+  const tr = modeTracks(s.profile.mode);
+  return Object.keys(s.skills).filter((id) => SKILLS[id] && tr.includes(SKILLS[id].track) && s.skills[id].recent.length >= 4)
     .map((id) => ({ skill: SKILLS[id], acc: s.skills[id].recent.slice(-10).filter((r) => r.c).length / Math.min(10, s.skills[id].recent.length) }))
     .filter((x) => x.acc < 0.85).sort((a, b) => a.acc - b.acc).slice(0, 6);
 }

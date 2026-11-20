@@ -1,0 +1,52 @@
+// Synth mode in a real browser: the mode switch, a lesson, a match exercise that makes sound, a recipe and the free-play synth.
+// Run `npm run build && npx vite preview --port 4173` first, or set APP_URL.
+import puppeteer from 'puppeteer-core';
+const URL = process.env.APP_URL || 'http://localhost:4173/';
+const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844 });
+const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/fonts|ORB/.test(m.text())) errors.push(m.text()); });
+const fails = []; const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); if (!ok) fails.push(name); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const click = async (text, sel = 'button') => { const ok = await page.evaluate((text, sel) => { const b = [...document.querySelectorAll(sel)].filter((x) => x.offsetParent !== null).find((x) => x.textContent.trim().startsWith(text)); if (b) { b.click(); return true; } return false; }, text, sel); await sleep(350); return ok; };
+const has = (t) => page.evaluate((t) => document.querySelector('.shell:not([hidden])').innerText.includes(t), t);
+const back = async () => { await page.evaluate(() => history.back()); await sleep(500); };
+// tap the synth's output so the checks can tell whether it is sounding
+await page.evaluateOnNewDocument(() => { const orig = AudioNode.prototype.connect; window.__an = null; AudioNode.prototype.connect = function (d, ...a) { if (this instanceof AnalyserNode && !window.__an) window.__an = this; return orig.call(this, d, ...a); }; });
+const loudest = async (ms) => { let best = 0; for (let t = 0; t < ms; t += 150) { await sleep(150); best = Math.max(best, await page.evaluate(() => { const a = window.__an; if (!a) return 0; const b = new Float32Array(a.fftSize); a.getFloatTimeDomainData(b); return Math.sqrt(b.reduce((s, x) => s + x * x, 0) / b.length); })); } return best; };
+
+await page.goto(URL, { waitUntil: 'networkidle0' });
+await click('Skip setup');
+check('Home offers the mode switch', await has('Music') && await has('Synth'));
+await click('Synth');
+check('synth mode shows the synth introduction', await has('Learn to use a synthesizer'));
+check('the page is marked as synth mode', await page.evaluate(() => document.documentElement.dataset.mode === 'synth'));
+await click('Learn');
+check('Learn lists the synth units', await has('Unit 1 · Sound itself') && await has('Unit 12 · Any synth, any sound'));
+await click('S1.1', 'button.node'); await click('Start lesson');
+check('a synth lesson opens with a sound to play', await has('A plain tone'));
+await click('Play'); check('the lesson figure makes sound', (await loudest(1500)) > 0.01);
+await back();
+await click('Practice');
+await click('S5', 'button.node'); await click('Start'); await sleep(500);
+check('a match exercise shows a knob and a picture', await page.evaluate(() => !!document.querySelector('.shell:not([hidden]) [role=slider]') && !!document.querySelector('.shell:not([hidden]) .tb-trace')));
+await click('Hear the target'); check('the target makes sound', (await loudest(2100)) > 0.01);
+await click('Check my match'); check('a first miss gives a hint, not the answer', await has('Not yet'));
+const before = await page.evaluate(() => document.querySelector('.shell:not([hidden]) [role=slider]').getAttribute('aria-valuenow'));
+await page.focus('.shell:not([hidden]) [role=slider]'); for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowDown');
+check('the knob turns from the keyboard', before !== await page.evaluate(() => document.querySelector('.shell:not([hidden]) [role=slider]').getAttribute('aria-valuenow')));
+await click('Give up'); await sleep(400);
+check('giving up shows the target on the knob', await page.evaluate(() => !!document.querySelector('.shell:not([hidden]) .tb-knob-scale .aim')) && await has('The target was'));
+await back();
+await click('S12', 'button.node'); await click('Start'); await sleep(500);
+check('a recipe shows its brief', await has('Build a sub bass'));
+await click('Check my match'); check('the plain starting patch does not pass a recipe', await has('Not yet'));
+await page.evaluate(() => [...document.querySelectorAll('.shell:not([hidden]) .tb-chip')].find((b) => b.textContent === 'Sine').click()); await sleep(200);
+await click('Check my match'); await sleep(400); check('a sine passes the sub bass recipe', await has('Correct'));
+await back();
+await click('Home'); await click('Free play', 'button.card'); await sleep(500);
+check('the free-play synth opens with keys and controls', await page.evaluate(() => document.querySelectorAll('.shell:not([hidden]) .kb .wk').length === 8 && document.querySelectorAll('.shell:not([hidden]) [role=slider]').length > 20));
+await back(); await click('Music');
+check('switching back restores music mode', await page.evaluate(() => document.documentElement.dataset.mode === 'music') && !(await has('Learn to use a synthesizer')));
+check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nALL PASSED');
+await browser.close(); process.exit(fails.length ? 1 : 0);

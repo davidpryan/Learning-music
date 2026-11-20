@@ -16,7 +16,7 @@ export interface State {
   v: number;
   profile: {
     xp: number; dailyGoalMin: 5 | 10 | 20; streak: number; lastGoalDate: string; freezeWeek: string; badges: string[];
-    latency: Record<string, number>; voiceRange: [number, number] | null; micGate: number; onboarded: boolean; settings: Settings;
+    mode: 'music' | 'synth'; latency: Record<string, number>; voiceRange: [number, number] | null; micGate: number; onboarded: boolean; settings: Settings;
   };
   skills: Record<string, SkillState>;
   lessons: Record<string, { passedAt?: number; best: number }>;
@@ -25,16 +25,16 @@ export interface State {
   days: Record<string, { min: number; xp: number; goal: boolean }>;
   presets: Record<string, { name: string; params: any }[]>;
   keyQuest: string[]; tempo: Record<string, { bpm: number; pass: number; fail: number }>;
-  counters: Record<string, number>; userPieces: { id: string; title: string; xml: string }[]; dailyLog: { d: string; game: string; score: number }[];
+  counters: Record<string, number>; synthPatches: { name: string; patch: Record<string, number> }[]; userPieces: { id: string; title: string; xml: string }[]; dailyLog: { d: string; game: string; score: number }[];
 }
 export const SCHEMA = 1;
 export const defaults = (): State => ({
   v: SCHEMA,
   profile: {
-    xp: 0, dailyGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
+    xp: 0, mode: 'music', dailyGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
     settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false, sfx: true },
   },
-  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, userPieces: [], dailyLog: [],
+  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [],
 });
 
 let state: State = defaults();
@@ -49,7 +49,7 @@ export function set(fn: (s: State) => void) {
 function applySettings() {
   const st = state.profile.settings;
   setVolumes(st.volume, st.metVolume, st.sfx); setNameSystem(st.nameSystem);
-  if (typeof document !== 'undefined') { document.documentElement.dataset.theme = st.theme; document.documentElement.dataset.motion = st.reducedMotion ? 'reduced' : 'full'; }
+  if (typeof document !== 'undefined') { document.documentElement.dataset.theme = st.theme; document.documentElement.dataset.motion = st.reducedMotion ? 'reduced' : 'full'; document.documentElement.dataset.mode = state.profile.mode; }
 }
 
 // ---- persistence ----

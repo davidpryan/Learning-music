@@ -16,6 +16,7 @@ import { Settings } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { Run, Session, Timed } from './screens/Run';
 import { GameScreen } from './games/games';
+import { Sandbox } from './screens/Sandbox';
 
 const TABS: [Route['n'], string, string][] = [['home', 'Home', 'home'], ['learn', 'Learn', 'learn'], ['practice', 'Practice', 'practice'], ['play', 'Play', 'play'], ['progress', 'Progress', 'progress']];
 const isTab = (n: string) => TABS.some((t) => t[0] === n);
@@ -25,7 +26,7 @@ export default function App() {
   const s = useS();
   const [ready, setReady] = useState(false), [stack, setStack] = useState<{ r: Route; k: number }[]>([{ r: fromHash(), k: 0 }]), [toast, setToast] = useState('');
   const active = useRef(Date.now());
-  useEffect(() => { load().then(() => { micState.gate = get().profile.micGate; setReady(true); }); }, []);
+  useEffect(() => { load().then(() => { micState.gate = get().profile.micGate; setReady(true); try { if (location.hash.startsWith('#patch=') && get().profile.onboarded) setStack((st) => [...st, { r: { n: 'sandbox' }, k: 9999 }]); } catch { /* no hash access */ } }); }, []);
   useEffect(() => {
     const mark = () => { active.current = Date.now(); };
     ['pointerdown', 'keydown'].forEach((e) => window.addEventListener(e, mark, { passive: true }));
@@ -80,6 +81,7 @@ export default function App() {
       case 'lesson': return <LessonView id={r.id} onExit={nav.back} />;
       case 'run': return <Run r={r} />;
       case 'timed': return <Timed title={r.title} ex={r.ex} preset={r.preset} highKey={r.highKey} skillId={r.skillId} onExit={nav.back} />;
+      case 'sandbox': return <Sandbox onExit={nav.back} />;
       case 'game': return <GameScreen id={r.id} daily={r.daily} onExit={nav.back} />;
       default: return <Home />;
     }
@@ -88,7 +90,7 @@ export default function App() {
     <Nav.Provider value={nav}>
       <div className="app">
         {showTabs && <nav className="tabbar" aria-label="Main">{TABS.map(([n, l, ic]) => <button key={n} aria-current={top.n === n ? 'page' : undefined} onClick={() => nav.go({ n } as Route)}><Icon name={ic} />{l}</button>)}</nav>}
-        {stack.map((e, i) => <div className="shell" key={e.k} hidden={i !== stack.length - 1}>{render(e.r)}</div>)}
+        {stack.map((e, i) => <div className="shell" data-sec={e.r.n} key={e.k} hidden={i !== stack.length - 1}>{render(e.r)}</div>)}
         {toast && <div className="toast" role="status">{toast}</div>}
       </div>
     </Nav.Provider>

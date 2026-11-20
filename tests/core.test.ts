@@ -126,15 +126,16 @@ describe('pitch detector', () => {
 });
 
 describe('content', () => {
-  it('has 72 lessons and every exercise reference is valid', () => {
-    expect(LESSONS.length).toBe(72);
+  it('has 72 music lessons, 103 synth lessons, and every exercise reference is valid', () => {
+    expect(LESSONS.filter((l) => l.track !== 'synth').length).toBe(72);
+    expect(LESSONS.filter((l) => l.track === 'synth').length).toBe(103);
     expect(LESSONS.filter((l) => l.track === 'theory').length).toBe(55);
-    expect(new Set(LESSONS.map((l) => l.id)).size).toBe(72);
+    expect(new Set(LESSONS.map((l) => l.id)).size).toBe(175);
     for (const l of LESSONS) {
       for (const st of l.steps) { expect(st.t.split(/\s+/).length, l.id + ' step too long').toBeLessThanOrEqual(60); if (st.try) expect(EX[st.try.ex], l.id).toBeTruthy(); if (st.fig && 'staff' in st.fig) parseNotes(st.fig.staff); }
       for (const n of l.needs ?? []) expect(LESSONS.find((x) => x.id === n), l.id + ' needs ' + n).toBeTruthy();
     }
-    expect(Object.keys(EX).length).toBe(27);
+    expect(Object.keys(EX).length).toBe(41);
   });
   it('every skill preset generates valid questions', () => {
     const all = [...Object.values(SKILLS).map((k) => ({ ex: k.ex, preset: k.preset, id: k.id })), ...LESSONS.flatMap((l) => [...(l.quiz ?? []), ...l.steps.filter((s) => s.try).map((s) => s.try!)].map((q) => ({ ...q, id: l.id })))];

@@ -164,12 +164,12 @@ function StaffRunner({ daily, seed, onExit }: GP) {
     <><TopBar title={`Staff Runner · ${TIER[tier]}`} onBack={exit} right={state === 'run' ? <span className="chip accent" aria-label={`${Math.max(0, g.lives)} lives, ${g.score} notes`}>{'♥'.repeat(Math.max(0, g.lives))}{'♡'.repeat(3 - Math.max(0, g.lives))} · {g.score}</span> : undefined} /><main className="main col">
       {state === 'ready' ? <div className="col center" style={{ paddingTop: 24 }}><h1>Staff Runner</h1><p className="muted">Play each note before it reaches the blue line. Three misses end the run.</p><InputSwitch /><button className="btn primary big" onClick={() => setState('run')}>Start</button></div>
         : state === 'end' ? <Done title="Run over" stars={starsFor(g.score, RUNNER_STARS)} lines={[`${g.score} notes`, `Best: ${Math.max(g.score, s.bests['runner:' + tier] ?? 0)}`]} onAgain={() => { setRound(round + 1); setState('run'); }} onExit={exit} /> : <>
-          <div className="runner-field" ref={field} style={{ outline: flash === 'miss' ? '3px solid #b91c1c' : flash === 'bad' ? '3px solid #d97706' : flash === 'hit' ? '3px solid #15803d' : 'none' }} role="img" aria-label={next ? `Next note: ${label(next.p, true)}` : 'Staff'}>
+          <div className="runner-field" ref={field} style={{ outline: flash === 'miss' ? '4px solid #6238AC' : flash === 'bad' ? '4px solid #BD6110' : flash === 'hit' ? '4px solid #008562' : 'none' }} role="img" aria-label={next ? `Next note: ${label(next.p, true)}` : 'Staff'}>
             <div ref={bg} style={{ position: 'absolute', inset: 0 }} />
             <svg width="100%" height="170" style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
-              <line x1="62" x2="62" y1="38" y2="98" stroke="#1f5fd1" strokeWidth="3" />
+              <line x1="62" x2="62" y1="38" y2="98" stroke="#3A6CE0" strokeWidth="3" />
               {g.notes.map((n, i) => { const y = yOf(n.p), led: number[] = []; for (let yy = 98; yy <= y; yy += 10) led.push(yy); for (let yy = 38; yy >= y; yy -= 10) led.push(yy);
-                return <g key={n.id}>{led.map((yy) => <line key={yy} x1={n.x - 11} x2={n.x + 11} y1={yy} y2={yy} stroke="#14171f" strokeWidth="1.3" />)}{n.p.a !== 0 && <text x={n.x - 20} y={y + 5} fontSize="15" fill="#14171f">{n.p.a > 0 ? '♯' : '♭'}</text>}<ellipse cx={n.x} cy={y} rx="6.8" ry="4.9" transform={`rotate(-20 ${n.x} ${y})`} fill={i === 0 ? '#1f5fd1' : '#14171f'} /></g>; })}
+                return <g key={n.id}>{led.map((yy) => <line key={yy} x1={n.x - 11} x2={n.x + 11} y1={yy} y2={yy} stroke="#2B2D42" strokeWidth="1.3" />)}{n.p.a !== 0 && <text x={n.x - 20} y={y + 5} fontSize="15" fill="#2B2D42">{n.p.a > 0 ? '♯' : '♭'}</text>}<ellipse cx={n.x} cy={y} rx="6.8" ry="4.9" transform={`rotate(-20 ${n.x} ${y})`} fill={i === 0 ? '#3A6CE0' : '#2B2D42'} /></g>; })}
             </svg>
           </div>
           <div className="small muted center">{flash === 'bad' ? 'Not that one. Try again before it crosses.' : 'Play the blue note.'}</div>

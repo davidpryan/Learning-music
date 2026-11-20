@@ -1,6 +1,6 @@
 import { useNav } from '../nav';
 import { useS, dayKey, addDays } from '../store';
-import { TRACKS, TRACK_NAME, LEVEL_NAME } from '../content';
+import { modeTracks, TRACK_NAME, LEVEL_NAME } from '../content';
 import { BADGES } from '../content/badges';
 import { trackStats, weakSpots, liveStreak, playerLevel, playerTitle } from '../sched';
 import { TopBar, Bar } from '../ui/common';
@@ -28,9 +28,9 @@ export function Progress() {
     <>
       <TopBar title="Progress" sub={`${playerTitle(s.profile.xp)} · level ${playerLevel(s.profile.xp)} · ${s.profile.xp} XP`} />
       <main className="main col">
-        {TRACKS.map((t) => { const st = trackStats(s, t); return (
+        {modeTracks(s.profile.mode).map((t) => { const st = trackStats(s, t); return (
           <div key={t} className="card col" style={{ gap: 6 }}>
-            <div className="row between"><b>{TRACK_NAME[t]}</b><span className="chip accent">{st.level ? `Level ${st.level} · ${LEVEL_NAME[t][st.level]}` : 'Not started'}</span></div>
+            <div className="row between"><b>{TRACK_NAME[t]}</b><span className="chip accent">{st.level ? `${t === 'synth' ? 'Unit' : 'Level'} ${st.level} · ${LEVEL_NAME[t][st.level]}` : 'Not started'}</span></div>
             <div className="small muted">Lessons {st.passed} / {st.lessons}</div><Bar v={st.passed / st.lessons} />
             <div className="small muted">Skills: {st.mastered} mastered, {st.practiced} practiced, {st.learning} learning, of {st.skills}</div><Bar v={st.mastered / st.skills} ok />
           </div>); })}

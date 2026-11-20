@@ -7,6 +7,16 @@ import { TopBar, Icon } from '../ui/common';
 
 export function Play() {
   const s = useS(), nav = useNav(), dc = dailyChallenge();
+  if (s.profile.mode === 'synth') return (
+    <>
+      <TopBar title="Play" sub="Free play on the synth" />
+      <main className="main col">
+        <p>Synth mode has no games yet. Open the synth to play with every control your lessons have reached, save patches and share them.</p>
+        <button className="btn primary big" onClick={() => nav.go({ n: 'sandbox' })}>Open the synth</button>
+        <p className="small muted">Quick-answer synth skills have 60-second sprints: open a passed lesson in Learn and choose Sprint.</p>
+      </main>
+    </>
+  );
   const best: Record<string, string> = { rush: `Best ${s.bests.rush ?? 0}`, runner: `Best ${s.bests.runner ?? 0}`, road: `Best run ${s.bests.road ?? 0}`, echo: `Best ${s.bests.echo ?? 0} notes`, dash: `Best ${s.bests.dash ?? 0}`, quest: 'keys claimed', boss: 'lives kept', rhythm: '40 stages', detective: '60 cases' };
   const total = GAMES.reduce((a, g) => a + gameStars(s, g.id)[0], 0), max = GAMES.reduce((a, g) => a + gameStars(s, g.id)[1], 0);
   const later = GAMES.filter((g) => !gameReady(s, g.id));
