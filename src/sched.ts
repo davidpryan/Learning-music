@@ -41,7 +41,7 @@ export function lockReason(s: State, l: Lesson): string {
   const need = (l.needs ?? []).find((n) => !s.lessons[n]?.passedAt);
   if (need) return `Needs lesson ${need}, "${LESSON_BY_ID[need].title}".`;
   const g = gateFor(s, l.track);
-  return g && g.lesson.id === l.id ? `Level ${l.level} opens when ${g.need} of the ${g.total} skills from the level before are at "Practiced" (10 answers at 80% or better). So far: ${g.ready}.` : `Practise the skills from the level before until 80% of them are at "Practiced".`;
+  return g && g.lesson.id === l.id ? `${l.track === 'synth' ? 'Unit' : 'Level'} ${l.level} opens when ${g.need} of the ${g.total} skills from the one before are at "Practiced" (${l.track === 'synth' ? '10 quick answers at 80%, or 3 matches with 2 right' : '10 answers at 80% or better'}). So far: ${g.ready}.` : `Practise the skills from the level before until 80% of them are at "Practiced".`;
 }
 /** When the next lesson in a track is held back only by the level rule: the skills still to practise, and how many are needed. */
 export function gateFor(s: State, t: Track): { lesson: Lesson; todo: Skill[]; ready: number; need: number; total: number } | null {
@@ -91,13 +91,15 @@ export function placeOut(ids: string[]) { ids.forEach((id) => passLesson(id, 4, 
 
 // ---------- recording attempts ----------
 export interface AttemptIn { skillId?: string; ex: string; ctx: string; correct: boolean; ms: number; input: string; hinted?: boolean; pp?: number; rp?: number; item?: string; combo?: number }
-function statusOf(k: SkillState, target: number): SkillState['status'] {
+function statusOf(k: SkillState, target: number, slow = false): SkillState['status'] {
+  // A full match or a recipe takes minutes, not seconds: three good builds show the skill, six master it.
+  const PN = slow ? 3 : CFG.practicedN, MN = slow ? 6 : CFG.masteredN;
   const n = k.recent.length, acc = (m: number) => k.recent.slice(-m).filter((r) => r.c).length / Math.min(m, n || 1);
-  if (n >= CFG.masteredN && acc(CFG.masteredN) >= CFG.masteredAcc) {
-    const ms = k.recent.slice(-CFG.masteredN).map((r) => r.ms).sort((a, b) => a - b), med = ms[Math.floor(ms.length / 2)];
+  if (n >= MN && acc(MN) >= CFG.masteredAcc) {
+    const ms = k.recent.slice(-MN).map((r) => r.ms).sort((a, b) => a - b), med = ms[Math.floor(ms.length / 2)];
     if (!target || med <= target) return 'mastered';
   }
-  return n >= CFG.practicedN && acc(CFG.practicedN) >= CFG.practicedAcc ? 'practiced' : 'learning';
+  return n >= PN && acc(PN) >= (slow ? 0.66 : CFG.practicedAcc) ? 'practiced' : 'learning';
 }
 function addXp(s: State, xp: number) {
   s.profile.xp += xp; const d = dayKey(); s.days[d] = s.days[d] ?? { min: 0, xp: 0, goal: false }; s.days[d].xp += xp;
@@ -115,7 +117,7 @@ export function record(a: AttemptIn): number {
       try { k.card = F.next(revive(k.card), new Date(), rating).card; } catch { k.card = createEmptyCard(new Date()); }
       k.recent.push({ c: a.correct, ms: a.ms, t: Date.now() }); if (k.recent.length > 20) k.recent.shift();
       k.againRun = a.correct ? 0 : k.againRun + 1;
-      const was = k.status; let now = statusOf(k, target);
+      const was = k.status; let now = statusOf(k, target, !!sk && sk.track === 'synth' && SLOW_EX.includes(sk.ex));
       if (was === 'mastered' && k.againRun >= 2) now = 'practiced';
       else if (was === 'mastered' && now !== 'mastered' && k.againRun < 2) now = 'mastered';
       k.status = now;

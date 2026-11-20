@@ -79,8 +79,8 @@ p { margin: 0 0 10px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--sand); color: var(--ink); white-space: nowrap; }
 .card .chip { background: var(--paper); }
 .chip.accent { background: var(--yellow); color: var(--ink); } .chip.ok { background: var(--go); color: var(--ink); } .chip.bad { background: var(--panel); color: #FFF6E0; }
-.seg { display: flex; gap: 8px; }
-.seg button { flex: 1; min-height: 46px; border: 0; border-radius: 999px; background: var(--chip); font-weight: 600; font-size: 14.4px; color: var(--chip-ink); padding: 0 10px; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { flex: 1 1 auto; min-height: 46px; border: 0; border-radius: 999px; background: var(--chip); font-weight: 600; font-size: 14.4px; color: var(--chip-ink); padding: 0 10px; }
 .seg button[aria-pressed='true'] { background: var(--chip-on); color: var(--chip-on-ink); font-weight: 700; }
 /* level bar: sand track, square-ended fill; ink for a setting, go for something achieved */
 .bar { height: 10px; background: var(--sand); overflow: hidden; } .bar > i { display: block; height: 100%; background: var(--ink); transition: width .25s; }

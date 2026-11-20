@@ -118,7 +118,7 @@ export function MatchArea({ q, a, done, ok, hint, onHint, onFinish }: { q: Quest
   useEffect(() => () => live.stop(), []);
   useEffect(() => { if (done) { live.stop(); setPlaying(null); } }, [done]);
   const hear = (w: 'mine' | 'target') => { if (playing === w) { live.stop(); setPlaying(null); return; } live.play(w === 'mine' ? p : a.target, s.n, s.loop); setPlaying(w); };
-  const change = (id: string, v: number) => { if (done) return; const np = { ...p, [id]: v }; setP(np); setMsg(''); if (playing === 'mine') live.setPatch(np); };
+  const change = (id: string, v: number) => { if (done) return; const np = { ...p, [id]: v }; setP(np); setMsg(''); if (playing === 'mine') live.setPatch(np); else { live.play(np, s.n, s.loop); setPlaying('mine'); } };
   const check = () => {
     const r = gradeMatch(a, p);
     if (r.ok) { onFinish(true); return; }
@@ -135,6 +135,7 @@ export function MatchArea({ q, a, done, ok, hint, onHint, onFinish }: { q: Quest
         <button className="tb-chip grow" aria-pressed={playing === 'mine'} onClick={() => hear('mine')}>Hear mine</button>
       </div>
       <Panel ctls={a.ctls} patch={p} onChange={change} marks={done && ok === false && !a.checks ? a.target : undefined} focus={!done && g && !g.ok ? g.worst : null} blind={!a.checks && !done} />
+      {hint && !msg && !done && a.checks && g && !g.ok && <div className="feedback bad" role="status"><div className="txt"><span>Hint: {g.say.charAt(0).toLowerCase() + g.say.slice(1)}.</span></div></div>}
       {msg && !done && <div className="feedback bad" role="status" aria-live="polite"><div className="txt"><span>{msg}</span></div></div>}
       {!done && <button className="btn primary big" onClick={check}>{tries >= 2 ? 'Check (last try)' : 'Check my match'}</button>}
     </div>

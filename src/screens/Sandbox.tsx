@@ -10,14 +10,17 @@ import { TopBar } from '../ui/common';
 
 const encode = (p: Patch) => btoa(JSON.stringify(Object.fromEntries(Object.keys(p).filter((k) => PD[k] && p[k] !== INIT[k]).map((k) => [k, +p[k].toFixed(4)]))));
 function decode(h: string): Patch | null { try { const o = JSON.parse(atob(h)); const p: Patch = {}; for (const k of Object.keys(o)) if (PD[k] && typeof o[k] === 'number') p[k] = Math.min(PD[k].max, Math.max(PD[k].min, o[k])); return mkPatch(p); } catch { return null; } }
-const fromHash = () => { try { return location.hash.startsWith('#patch=') ? decode(location.hash.slice(7)) : null; } catch { return null; } };
+/** A patch carried in the page address (a share link), read once as the app loads, before the address is tidied. */
+let shared: Patch | null = (() => { try { return location.hash.startsWith('#patch=') ? decode(location.hash.slice(7)) : null; } catch { return null; } })();
+export const hasSharedPatch = () => !!shared;
+const fromHash = () => shared;
 
 export function Sandbox({ onExit }: { onExit: () => void }) {
   const s = useS(), nav = useNav();
   const [p, setP] = useState<Patch>(() => fromHash() ?? mkPatch()), [all, setAll] = useState(false), [name, setName] = useState(''), [view, setView] = useState<'spectrum' | 'wave'>('spectrum'), [oct, setOct] = useState(48);
   const learned = synthControls(s), ctls = all || !learned.length ? PARAMS.map((d) => d.id) : learned;
   useEffect(() => { live.setPatch(p); }, [p]);
-  useEffect(() => () => live.stop(), []);
+  useEffect(() => () => { live.stop(); shared = null; }, []);
   const share = async () => { const url = location.href.split('#')[0] + '#patch=' + encode(p); try { await navigator.clipboard.writeText(url); nav.toast('Link copied'); } catch { nav.toast('Could not copy the link'); } };
   return (
     <>

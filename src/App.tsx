@@ -16,7 +16,7 @@ import { Settings } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { Run, Session, Timed } from './screens/Run';
 import { GameScreen } from './games/games';
-import { Sandbox } from './screens/Sandbox';
+import { Sandbox, hasSharedPatch } from './screens/Sandbox';
 
 const TABS: [Route['n'], string, string][] = [['home', 'Home', 'home'], ['learn', 'Learn', 'learn'], ['practice', 'Practice', 'practice'], ['play', 'Play', 'play'], ['progress', 'Progress', 'progress']];
 const isTab = (n: string) => TABS.some((t) => t[0] === n);
@@ -26,7 +26,7 @@ export default function App() {
   const s = useS();
   const [ready, setReady] = useState(false), [stack, setStack] = useState<{ r: Route; k: number }[]>([{ r: fromHash(), k: 0 }]), [toast, setToast] = useState('');
   const active = useRef(Date.now());
-  useEffect(() => { load().then(() => { micState.gate = get().profile.micGate; setReady(true); try { if (location.hash.startsWith('#patch=') && get().profile.onboarded) setStack((st) => [...st, { r: { n: 'sandbox' }, k: 9999 }]); } catch { /* no hash access */ } }); }, []);
+  useEffect(() => { load().then(() => { micState.gate = get().profile.micGate; setReady(true); if (hasSharedPatch() && get().profile.onboarded) setStack((st) => (st.some((e) => e.r.n === 'sandbox') ? st : [...st, { r: { n: 'sandbox' }, k: 9999 }])); }); }, []);
   useEffect(() => {
     const mark = () => { active.current = Date.now(); };
     ['pointerdown', 'keydown'].forEach((e) => window.addEventListener(e, mark, { passive: true }));

@@ -171,13 +171,17 @@ export class Engine {
       for (const s of this.seq) { if (s.t >= a && s.t < b) { this.noteOn(s.note, s.vel ?? 0.8); this.pend.push({ at: s.t + s.d, note: s.note }); } }
       this.pend = this.pend.filter((e) => { if (e.at < b) { this.noteOff(e.note); return false; } return true; });
       this.pos = b;
-      if (this.loop > 0 && this.pos >= this.loop) { this.pos -= this.loop; this.pend.forEach((e) => (e.at -= this.loop)); } else if (!this.loop && !this.pend.length && this.seq.every((s) => s.t < a)) this.seqOn = false;
+      if (this.loop > 0 && this.pos >= this.loop) {
+        // wrap, and start any note that falls in the sliver of the new pass this block already covers
+        this.pos -= this.loop; this.pend.forEach((e) => (e.at -= this.loop));
+        for (const s of this.seq) if (s.t < this.pos) { this.noteOn(s.note, s.vel ?? 0.8); this.pend.push({ at: s.t + s.d, note: s.note }); }
+      } else if (!this.loop && !this.pend.length && this.seq.every((s) => s.t < a)) this.seqOn = false;
     }
     const p = this.p;
     if (p.arp > 0 && this.held.length) {
       this.arpT -= dt;
       if (this.arpT <= 0) {
-        const step = (60 / p.bpm) * 4 * ADIV[Math.round(p.arpr)] * 0.5; this.arpT += step; if (this.arpT < -step) this.arpT = 0;
+        const step = (60 / p.bpm) * ADIV[Math.round(p.arpr)]; this.arpT += step; if (this.arpT < -step) this.arpT = 0;
         if (this.arpNote >= 0) this.rel(this.arpNote);
         const ns = [...this.held].sort((x, y) => x - y), m = Math.round(p.arp);
         if (m === 4) this.arpI = Math.floor(((this.rand() + 1) / 2) * ns.length) % ns.length;
@@ -185,7 +189,7 @@ export class Engine {
         else this.arpI = (this.arpI + 1) % ns.length;
         this.arpNote = ns[m === 2 ? ns.length - 1 - (this.arpI % ns.length) : this.arpI % ns.length]; this.trig(this.arpNote, 0.8);
       }
-    } else this.arpT = 0;
+    } else { this.arpT = 0; if (this.arpNote >= 0 && !(p.arp > 0)) { this.rel(this.arpNote); this.arpNote = -1; this.held = []; } }
   }
   private block(L: Float32Array, R: Float32Array, off: number, len: number) {
     this.events(len);

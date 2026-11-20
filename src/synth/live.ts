@@ -24,16 +24,20 @@ function bufferPlay(patch: Patch, seq: SeqNote[], loop: number) {
   const buf = ctx.createBuffer(1, data.length, ctx.sampleRate); buf.getChannelData(0).set(data);
   src = ctx.createBufferSource(); src.buffer = buf; src.loop = loop > 0; src.connect(out()); src.start();
 }
+function start(p: Patch, seq: SeqNote[], loop: number) {
+  last = { patch: p, seq, loop }; cur = p;
+  ensure().then(() => { if (last?.patch !== p) return; if (node) node.port.postMessage({ stop: 1, patch: p, seq, loop }); else bufferPlay(p, seq, loop); });
+}
 /** Play a patch over a phrase. Returns the phrase length in seconds. */
 export function play(patch: Patch, seq: SeqNote[], loop = 0): number {
-  const p = mkPatch(patch); clearTimers(); last = { patch: p, seq, loop }; cur = p;
-  ensure().then(() => { if (last?.patch !== p) return; if (node) node.port.postMessage({ stop: 1, patch: p, seq, loop }); else bufferPlay(p, seq, loop); });
+  clearTimers(); start(mkPatch(patch), seq, loop);
   return loop || Math.max(...seq.map((s) => s.t + s.d)) + 0.3;
 }
 /** Play several patches one after another over the same phrase, with a short gap. Returns the total length. */
 export function playSeries(patches: Patch[], seq: SeqNote[], gap = 0.45): number {
   clearTimers(); const one = Math.max(...seq.map((s) => s.t + s.d)) + gap;
-  patches.forEach((p, i) => { if (i === 0) play(p, seq); else timers.push(setTimeout(() => { const t = timers; play(p, seq); timers = t; }, i * one * 1000)); });
+  play(patches[0], seq);
+  patches.slice(1).forEach((p, i) => timers.push(setTimeout(() => start(mkPatch(p), seq, 0), (i + 1) * one * 1000)));
   return patches.length * one;
 }
 /** Change the sounding patch without restarting the phrase. */

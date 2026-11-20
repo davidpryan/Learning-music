@@ -37,7 +37,8 @@ export function waveform(p: Patch, seq: SeqNote[] = HOLD, points = 160): number[
   return memo('w' + points + keyOf(p, seq), () => {
     const sr = 44100, note = seq[0]?.note ?? 48, hz = 440 * Math.pow(2, (note - 69) / 12), per = sr / hz, at = Math.min(0.4, (seq[0]?.d ?? 1) * 0.5), buf = renderOffline(dry({ ...p, uni: 1, l1p: 0 }), seq, at + (3 * per) / sr + 0.05, sr);
     let st = Math.floor(at * sr); for (let i = st; i < st + per; i++) if (buf[i] <= 0 && buf[i + 1] > 0) { st = i; break; }
-    let pk = 1e-6; for (let i = 0; i < 2 * per; i++) pk = Math.max(pk, Math.abs(buf[st + i] || 0));
+    // Loud sounds fill the picture; quiet ones are drawn smaller, so loudness can be seen.
+    let pk = 0.3; for (let i = 0; i < 2 * per; i++) pk = Math.max(pk, Math.abs(buf[st + i] || 0));
     return Array.from({ length: points }, (_, i) => (buf[st + Math.floor((i / points) * 2 * per)] || 0) / pk);
   });
 }
