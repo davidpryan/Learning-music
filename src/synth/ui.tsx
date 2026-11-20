@@ -33,16 +33,16 @@ export function Knob({ id, value, onChange, target, focus, blind, label, size = 
     </div>
   );
 }
-export function Pick({ id, value, onChange, target, focus, label }: { id: string; value: number; onChange: (v: number) => void; target?: number; focus?: boolean; label?: string }) {
+export function Pick({ id, value, onChange, target, focus, label, top }: { id: string; value: number; onChange: (v: number) => void; target?: number; focus?: boolean; label?: string; /** highest option to offer */ top?: number }) {
   const d = PD[id];
   return (
     <div className={'tb-pick' + (focus ? ' is-focus' : '')} role="group" aria-label={label ?? `${d.group} ${d.label}`}>
       <div className="tb-knob-label">{label ?? d.label}</div>
-      <div className="row wrap" style={{ gap: 8, justifyContent: 'center' }}>{d.opts!.map((o, i) => <button key={o} className={'tb-chip' + (target === i ? ' aim' : '')} aria-pressed={Math.round(value) === i} onClick={() => onChange(i)}>{o}</button>)}</div>
+      <div className="row wrap" style={{ gap: 8, justifyContent: 'center' }}>{d.opts!.slice(0, top != null ? Math.max(top, Math.round(value), target ?? 0) + 1 : undefined).map((o, i) => <button key={o} className={'tb-chip' + (target === i ? ' aim' : '')} aria-pressed={Math.round(value) === i} onClick={() => onChange(i)}>{o}</button>)}</div>
     </div>
   );
 }
-export function Panel({ ctls, patch, onChange, marks, focus, blind }: { ctls: string[]; patch: Patch; onChange: (id: string, v: number) => void; marks?: Patch; focus?: string | null; blind?: boolean }) {
+export function Panel({ ctls, patch, onChange, marks, focus, blind, limit }: { ctls: string[]; patch: Patch; onChange: (id: string, v: number) => void; marks?: Patch; focus?: string | null; blind?: boolean; limit?: Record<string, number> }) {
   const groups: string[] = []; for (const id of ctls) if (!groups.includes(PD[id].group)) groups.push(PD[id].group);
   return (
     <div className="col" style={{ gap: 14 }}>
@@ -51,7 +51,7 @@ export function Panel({ ctls, patch, onChange, marks, focus, blind }: { ctls: st
           {groups.length > 1 && <h3>{g}</h3>}
           <div className="tb-controls">
             {ctls.filter((id) => PD[id].group === g).map((id) => isChoice(id)
-              ? <Pick key={id} id={id} value={patch[id]} onChange={(v) => onChange(id, v)} target={marks?.[id]} focus={focus === id} />
+              ? <Pick key={id} id={id} value={patch[id]} onChange={(v) => onChange(id, v)} target={marks?.[id]} focus={focus === id} top={limit?.[id]} />
               : <Knob key={id} id={id} value={patch[id]} onChange={(v) => onChange(id, v)} target={marks?.[id]} focus={focus === id} blind={blind} />)}
           </div>
         </section>
@@ -96,7 +96,7 @@ export function PatchFig({ fig }: { fig: { patch: Patch; label: string; view?: V
   );
 }
 /** Lesson figure: a few live controls to turn while the sound loops. */
-export function PanelFig({ fig }: { fig: { panel: string[]; patch: Patch; label?: string; view?: VizSpec['kind']; seq?: string } }) {
+export function PanelFig({ fig }: { fig: { panel: string[]; patch: Patch; label?: string; view?: VizSpec['kind']; seq?: string; limit?: Record<string, number> } }) {
   const [p, setP] = useState(() => mkPatch(fig.patch)), [on, setOn] = useState(false), s = seqOf(fig.seq);
   useEffect(() => () => live.stop(), []);
   const toggle = () => { if (on) live.stop(); else live.play(p, s.n, s.loop); setOn(!on); };
@@ -104,8 +104,18 @@ export function PanelFig({ fig }: { fig: { panel: string[]; patch: Patch; label?
     <div className="card col" style={{ gap: 10 }}>
       {fig.view && <Trace kind={fig.view} patch={p} seq={fig.seq} />}
       <button className={'btn' + (on ? '' : ' primary')} aria-pressed={on} onClick={toggle}><Icon name={on ? 'stop' : 'playtri'} size={14} />{on ? 'Stop the sound' : 'Start the sound, then turn'}</button>
-      <Panel ctls={fig.panel} patch={p} onChange={(id, v) => { const np = { ...p, [id]: v }; setP(np); if (on) live.setPatch(np); }} />
+      <Panel ctls={fig.panel} patch={p} limit={fig.limit} onChange={(id, v) => { const np = { ...p, [id]: v }; setP(np); if (on) live.setPatch(np); }} />
       {fig.label && <div className="small muted">{fig.label}</div>}
+    </div>
+  );
+}
+/** Lesson figure: several named sounds side by side. Tapping one plays it and shows its picture. */
+export function SoundsFig({ fig }: { fig: { sounds: [string, Patch][]; view?: VizSpec['kind']; seq?: string } }) {
+  const [sel, setSel] = useState(0), s = seqOf(fig.seq);
+  return (
+    <div className="card col" style={{ gap: 10 }}>
+      {fig.view && <Trace kind={fig.view} patch={mkPatch(fig.sounds[sel][1])} seq={fig.seq} caption={`Showing: ${fig.sounds[sel][0].toLowerCase()}`} />}
+      <div className="row wrap" role="group" aria-label="Sounds to compare">{fig.sounds.map(([name, p], i) => <button key={name} className="tb-chip" aria-pressed={fig.view ? sel === i : undefined} onClick={() => { setSel(i); live.play(mkPatch(p), s.n); }}><Icon name="playtri" size={14} /> {name}</button>)}</div>
     </div>
   );
 }
@@ -134,7 +144,7 @@ export function MatchArea({ q, a, done, ok, hint, onHint, onFinish }: { q: Quest
         <button className="tb-chip grow" aria-pressed={playing === 'target'} onClick={() => hear('target')}>Hear {noun}</button>
         <button className="tb-chip grow" aria-pressed={playing === 'mine'} onClick={() => hear('mine')}>Hear mine</button>
       </div>
-      <Panel ctls={a.ctls} patch={p} onChange={change} marks={done && ok === false && !a.checks ? a.target : undefined} focus={!done && g && !g.ok ? g.worst : null} blind={!a.checks && !done} />
+      <Panel ctls={a.ctls} patch={p} onChange={change} marks={done && ok === false && !a.checks ? a.target : undefined} focus={!done && g && !g.ok ? g.worst : null} blind={!a.checks && !done} limit={a.limit} />
       {hint && !msg && !done && a.checks && g && !g.ok && <div className="feedback bad" role="status"><div className="txt"><span>Hint: {g.say.charAt(0).toLowerCase() + g.say.slice(1)}.</span></div></div>}
       {msg && !done && <div className="feedback bad" role="status" aria-live="polite"><div className="txt"><span>{msg}</span></div></div>}
       {!done && <button className="btn primary big" onClick={check}>{tries >= 2 ? 'Check (last try)' : 'Check my match'}</button>}

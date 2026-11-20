@@ -174,6 +174,23 @@ export const QUIZ: Record<string, string[][]> = {
   ],
 };
 
+/** The lesson that teaches each fact above, row for row. */
+export const QUIZ_AT: Record<string, string[]> = {
+  sound: ['1.1', '1.2', '1.3', '1.4', '1.5', '1.4', '1.1'],
+  osc: ['2.1', '2.2', '2.2', '2.3', '2.7', '2.8', '2.4', '2.5'],
+  filter: ['3.1', '3.5', '3.3', '3.7', '3.8', '3.8', '3.6', '3.6', '3.9'],
+  env: ['4.1', '4.3', '4.2', '4.6', '4.6', '4.6', '4.4', '4.5'],
+  shape: ['5.1', '5.4', '5.5', '5.6', '5.7', '5.7', '5.3'],
+  lfo: ['6.1', '6.1', '6.3', '6.2', '6.4', '6.6', '6.7', '6.5'],
+  voices: ['7.1', '7.2', '7.3', '7.4', '7.5', '7.6', '7.5'],
+  fx: ['8.4', '8.5', '8.2', '8.1', '8.4', '8.7', '8.6', '8.8', '8.3'],
+  sync: ['10.1', '10.1', '10.2', '10.2'],
+  fm: ['10.3', '10.3', '10.3', '10.4', '10.5', '10.6', '10.7'],
+  wavetable: ['11.1', '11.1', '11.2'], additive: ['11.3', '11.3', '11.4', '11.4'], sampling: ['11.5', '11.5', '11.6', '11.5'], granular: ['11.7', '11.7', '11.7', '11.8'], physical: ['11.9', '11.9', '11.9'],
+  engines: ['11.10', '11.10', '11.10', '11.10', '11.10', '11.10'], matrix: ['12.1', '12.1', '12.2', '12.2', '12.2'], cv: ['12.3', '12.3', '12.3', '12.3', '12.3'], seq: ['12.4', '12.4', '12.4', '12.4'], midi: ['12.5', '12.5', '12.5', '12.5'],
+  panel: ['12.6', '12.6', '12.6', '12.8', '12.8'], mix: ['12.9', '12.9', '12.9', '12.9'],
+};
+
 export const FLOW: Record<string, string[][]> = {
   basic: [
     ['In which order does sound pass through a subtractive synth?', 'Oscillator, filter, amplifier', 'Filter, oscillator, amplifier', 'Amplifier, oscillator, filter', 'Envelope, LFO, oscillator'],
@@ -217,13 +234,13 @@ export const PANEL_SETS: Record<string, string[]> = {
   mod: ['l1r', 'l1p', 'l1f', 'l1fade', 'cho', 'dist', 'dly', 'dfb', 'rev', 'uspread'],
 };
 
-export interface Recipe { name: string; brief: string; base: Patch; ref: Patch; ctls: string[]; note: number; seq: string; checks: { say: string; test: (p: Patch, f: Features) => boolean }[] }
+export interface Recipe { name: string; brief: string; base: Patch; ref: Patch; ctls: string[]; note: number; seq: string; /** highest option to show on a choice control, where later ones have not been taught */ limit?: Record<string, number>; checks: { say: string; test: (p: Patch, f: Features) => boolean }[] }
 export const RECIPES: Record<string, Recipe> = {
-  sub: { name: 'a sub bass', brief: 'A pure, steady low note with no buzz: felt more than heard.', base: {}, ref: { o1w: 0 }, ctls: ['o1w', 'cut', 'aa', 'as', 'ar'], note: 48, seq: 'low', checks: [
+  sub: { name: 'a sub bass', brief: 'A pure, steady low note with no buzz: felt more than heard.', base: {}, ref: { o1w: 0 }, ctls: ['o1w', 'cut', 'aa', 'as', 'ar'], note: 48, seq: 'low', limit: { o1w: 3, o2w: 3 }, checks: [
     { say: 'Too bright for a sub. Use a sine or triangle, or close the filter', test: (_p, f) => f.centroid < 240 },
     { say: 'A sub holds steady while the key is down. Raise the sustain', test: (_p, f) => f.sustain > 0.6 },
     { say: 'It should start at once. Shorten the attack', test: (_p, f) => f.attack < 0.08 }] },
-  reese: { name: 'a reese bass', brief: 'Two saws, detuned so they beat against each other, darkened by the filter.', base: {}, ref: { o2lvl: 0.8, o2det: 20, cut: 500 }, ctls: ['o1w', 'o2w', 'o2lvl', 'o2det', 'cut', 'res'], note: 48, seq: 'low', checks: [
+  reese: { name: 'a reese bass', brief: 'Two saws, detuned so they beat against each other, darkened by the filter.', base: {}, ref: { o2lvl: 0.8, o2det: 20, cut: 500 }, ctls: ['o1w', 'o2w', 'o2lvl', 'o2det', 'cut', 'res'], note: 48, seq: 'low', limit: { o1w: 3, o2w: 3 }, checks: [
     { say: 'Bring in the second oscillator', test: (p) => p.o2lvl >= 0.4 },
     { say: 'Detune the second oscillator so the two beat', test: (p) => p.o2det >= 8 },
     { say: 'Darken it: lower the cutoff', test: (_p, f) => f.centroid < 700 }] },
@@ -237,7 +254,7 @@ export const RECIPES: Record<string, Recipe> = {
     { say: 'It should start at once. Shorten the attack', test: (_p, f) => f.attack < 0.04 },
     { say: 'It should die away while held. Lower the sustain and keep the decay short', test: (_p, f) => f.sustain < 0.25 },
     { say: 'Shorten the release so notes do not smear', test: (_p, f) => f.tail < 0.2 }] },
-  keys: { name: 'a soft keyboard', brief: 'Mellow, quick to speak, fading gently while held, and louder when played harder.', base: {}, ref: { o1w: 1, cut: 1800, ad: 0.7, as: 0.3, ar: 0.25, avel: 0.6 }, ctls: ['o1w', 'cut', 'ad', 'as', 'ar', 'avel'], note: 60, seq: 'vel', checks: [
+  keys: { name: 'a soft keyboard', brief: 'Mellow, quick to speak, fading gently while held, and louder when played harder.', base: {}, ref: { o1w: 1, cut: 1800, ad: 0.7, as: 0.3, ar: 0.25, avel: 0.6 }, ctls: ['o1w', 'cut', 'ad', 'as', 'ar', 'avel'], note: 60, seq: 'vel', limit: { o1w: 3, o2w: 3 }, checks: [
     { say: 'Too bright. Use a mellower wave or lower the cutoff', test: (_p, f) => f.centroid < 900 },
     { say: 'It should fade while held, but not to nothing. Set sustain somewhere in the lower half', test: (p) => p.as >= 0.1 && p.as <= 0.6 },
     { say: 'Give it a decay you can hear: longer than a pluck', test: (p) => p.ad >= 0.3 },
@@ -263,7 +280,7 @@ export const RECIPES: Record<string, Recipe> = {
     { say: 'Stack more unison voices', test: (p) => p.uni >= 4 },
     { say: 'Spread the voices further apart in tuning', test: (p) => p.uspread >= 15 },
     { say: 'Open the filter: a supersaw is bright', test: (p) => p.cut >= 5000 }] },
-  kick: { name: 'a kick drum', brief: 'A low thump: a sine whose pitch drops very fast at the start, and no sustain.', base: {}, ref: { o1w: 0, penv: 20, pdec: 0.05, ad: 0.25, as: 0, ar: 0.1 }, ctls: ['o1w', 'penv', 'pdec', 'ad', 'as', 'ar'], note: 48, seq: 'drum', checks: [
+  kick: { name: 'a kick drum', brief: 'A low thump: a sine whose pitch drops very fast at the start, and no sustain.', base: {}, ref: { o1w: 0, penv: 20, pdec: 0.05, ad: 0.25, as: 0, ar: 0.1 }, ctls: ['o1w', 'penv', 'pdec', 'ad', 'as', 'ar'], note: 48, seq: 'drum', limit: { o1w: 3, o2w: 3 }, checks: [
     { say: 'Use a sine or triangle for a clean thump', test: (p) => p.o1w <= 1 },
     { say: 'Make the pitch start well above the note', test: (p) => p.penv >= 8 },
     { say: 'The pitch must drop very fast', test: (p) => p.pdec <= 0.15 },
@@ -272,7 +289,7 @@ export const RECIPES: Record<string, Recipe> = {
     { say: 'It needs noise', test: (p) => p.nlvl >= 0.5 },
     { say: 'Turn the oscillator down so the noise leads', test: (p) => p.o1lvl <= 0.6 },
     { say: 'Keep it short: no sustain, quick decay', test: (_p, f) => f.sustain < 0.15 }] },
-  hat: { name: 'a hi-hat', brief: 'Only the top of the noise, and very short.', base: {}, ref: { nlvl: 1, o1lvl: 0, ft: 1, cut: 6000, ad: 0.05, as: 0, ar: 0.04 }, ctls: ['o1lvl', 'nlvl', 'ft', 'cut', 'ad', 'as', 'ar'], note: 60, seq: 'drum', checks: [
+  hat: { name: 'a hi-hat', brief: 'Only the top of the noise, and very short.', base: {}, ref: { nlvl: 1, o1lvl: 0, ft: 1, cut: 6000, ad: 0.05, as: 0, ar: 0.04 }, ctls: ['o1lvl', 'nlvl', 'ft', 'cut', 'ad', 'as', 'ar'], note: 60, seq: 'drum', limit: { ft: 3 }, checks: [
     { say: 'It needs noise, and no oscillator', test: (p) => p.nlvl >= 0.5 && p.o1lvl <= 0.15 },
     { say: 'Use a high-pass filter to keep only the top', test: (p) => Math.round(p.ft) === 1 },
     { say: 'Raise the cutoff until only the sizzle is left', test: (p) => p.cut >= 3000 },

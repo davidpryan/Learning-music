@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
+import { planCheck, passMark } from '../check';
 import { useNav } from '../nav';
 import { LESSON_BY_ID, TRACK_NAME } from '../content';
 import { Runner, RunItem } from '../ui/Runner';
@@ -10,10 +11,12 @@ export function LessonView({ id, onExit }: { id: string; onExit: () => void }) {
   const l = LESSON_BY_ID[id];
   const [step, setStep] = useState(0), [phase, setPhase] = useState<'steps' | 'check' | 'result'>('steps'), [score, setScore] = useState(0), [round, setRound] = useState(0);
   const sk = skillsOf(id), nav = useNav(), credit = useRef<{ skillId?: string; ok: boolean }[]>([]);
-  const quiz: RunItem[] = (l.quiz ?? l.unlocks).map((u, i) => ({ ex: u.ex, preset: u.preset, skillId: l.quiz ? undefined : sk[i]?.id }));
+  // Synth lessons get a planned check: every concept once, no repeats, 5 to 8 questions. Music lessons keep five from their own list.
+  const quiz: RunItem[] = useMemo(() => (l.track === 'synth' ? planCheck(l, sk.map((k) => k.id)) : (l.quiz ?? l.unlocks).map((u, i) => ({ ex: u.ex, preset: u.preset, skillId: l.quiz ? undefined : sk[i]?.id }))), [id, round]);
+  const N = l.track === 'synth' ? quiz.length : 5, need = l.track === 'synth' ? passMark(N) : 4;
   const st = l.steps[step], last = step === l.steps.length - 1;
   const finishSteps = () => { stopAll(); if (!quiz.length) { passLesson(id, 5); setScore(5); setPhase('result'); } else setPhase('check'); };
-  const pass = score >= 4;
+  const pass = score >= need;
   return (
     <>
       <TopBar title={l.title} sub={`${TRACK_NAME[l.track]} · lesson ${l.id}`} onBack={onExit} />
@@ -32,14 +35,14 @@ export function LessonView({ id, onExit }: { id: string; onExit: () => void }) {
         )}
         {phase === 'check' && (
           <>
-            <span className="chip accent" style={{ alignSelf: 'flex-start' }}>Check · 5 questions · pass with 4</span>
-            <Runner key={round} items={quiz} count={5} ctx="lesson" onAnswer={(ok) => { credit.current.push({ skillId: quiz[credit.current.length % quiz.length].skillId, ok }); }} onDone={(r) => { setScore(r.correct); if (r.correct >= 4) passLesson(id, r.correct, false, credit.current); credit.current = []; setPhase('result'); }} />
+            <span className="chip accent" style={{ alignSelf: 'flex-start' }}>Check · {N} questions · pass with {need}</span>
+            <Runner key={round} items={quiz} count={N} ctx="lesson" onAnswer={(ok) => { credit.current.push({ skillId: quiz[credit.current.length % quiz.length].skillId, ok }); }} onDone={(r) => { setScore(r.correct); if (r.correct >= need) passLesson(id, r.correct === N ? 5 : Math.min(4, Math.round((r.correct / N) * 5)), false, credit.current); credit.current = []; setPhase('result'); }} />
           </>
         )}
         {phase === 'result' && (
           <div className="col center" style={{ paddingTop: 20 }}>
             <h1>{pass ? 'Lesson passed' : 'Not yet'}</h1>
-            {quiz.length > 0 && <div className="bigstat">{score} / 5</div>}
+            {quiz.length > 0 && <div className="bigstat">{score} / {N}</div>}
             {pass ? (
               <>
                 {sk.length > 0 && <div className="card" style={{ textAlign: 'left' }}><h3>Unlocked for practice, reviews and games</h3>{sk.map((k) => <div key={k.id} className="row" style={{ padding: '3px 0' }}><Icon name="check" size={16} />{k.title}</div>)}</div>}

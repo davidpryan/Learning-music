@@ -1,6 +1,6 @@
 // Synth mode, units 7 to 12: voices, effects, recipes, FM and friends, other engines, and reading any synth.
 import { s, tr, u, Lesson } from './types';
-import { Y, P, pf, pn, ab, nm, chg, m1, mN, scratch, pic, flow, recipe, quiz, xl } from './synth1';
+import { Y, P, pf, pn, ps, ab, nm, chg, m1, mN, scratch, pic, flow, recipe, quiz, xl } from './synth1';
 import { RECIPES } from '../synth/bank';
 
 const eg = (id: string) => ({ ...RECIPES[id].base, ...RECIPES[id].ref });
@@ -117,7 +117,7 @@ export const SYNTH_B: Lesson[] = [
     s('Unison voices and spread do the work. Chorus on top makes it wider still.'),
   ], [recipe('Build a supersaw', 'supersaw')]),
   Y('9.10', 9, 'Kick drum', [
-    s('A synth kick is a sine wave whose pitch drops very fast at the start, with no sustain. The drop is the click and punch; what is left is the thump.', pf('A kick', eg('kick'), 'wave', 'drum')),
+    s('A synth kick is a sine wave whose pitch drops very fast at the start, with no sustain. The drop is the click and punch; what is left is the thump.', pf('A kick', eg('kick'), 'env', 'drum')),
     s('A bigger pitch amount makes it punchier. A longer amp decay makes it boomier.'),
   ], [recipe('Build a kick drum', 'kick')]),
   Y('9.11', 9, 'Snare and hi-hat', [
@@ -133,7 +133,7 @@ export const SYNTH_B: Lesson[] = [
   Y('10.1', 10, 'Oscillator sync', [
     s('With sync on, every time oscillator 1 restarts its cycle it forces oscillator 2 to restart too. Oscillator 2 can no longer change the note you hear. It changes the tone instead.', pn(['sync', 'o2semi'], { sync: 1, o1lvl: 0, o2lvl: 0.9, o2semi: 7 }, 'wave')),
     s('Sweep the pitch of the synced oscillator and you get a tearing, vocal sweep that no filter can make.', pf('Sync off', { o1lvl: 0, o2lvl: 0.9, o2semi: 7 }, 'wave', 'hold', { sync: 1 }, 'Sync on')),
-  ], [nm('Sync on or off', 'Oscillator 2 is tuned a fifth above. Is sync on?', [['Off: you hear the fifth', { sync: 0 }], ['On: same note, new tone', { sync: 1 }]], { o1lvl: 0, o2lvl: 0.9, o2semi: 7 }), ab('Sweeping the synced oscillator', 'o2semi', { sync: 1, o1lvl: 0, o2lvl: 0.9 }, { lo: 0.5, hi: 1, gap: 0.2 })], ['sync']),
+  ], [nm('Sync on or off', 'Oscillator 2 is tuned a fifth above. Is sync on?', [['Off: you hear the fifth', { sync: 0 }], ['On: same note, new tone', { sync: 1 }]], { o1lvl: 0, o2lvl: 0.9, o2semi: 7 }), ab('Sweeping the synced oscillator', 'o2semi', { sync: 1, o1lvl: 0, o2lvl: 0.9 }, { lo: 0.5, hi: 1, gap: 0.2, say: ['is brighter and more tearing (the synced oscillator is tuned higher)', 'is rounder (the synced oscillator is tuned lower)'] })], ['sync']),
   Y('10.2', 10, 'Ring modulation', [
     s('Ring modulation multiplies two oscillators together. What comes out is not either pitch, but their sum and their difference.', pn(['ring', 'o2semi'], { o1w: 0, o2w: 0, o1lvl: 0.2, o2semi: 7, ring: 0.8 }, 'spectrum')),
     s('When the two are in a simple ratio the result is a clean new tone. When they are not, you get clangs and bells.', pf('No ring mod', { o1w: 0, o2w: 0, o2semi: 6 }, 'spectrum', 'hold', { ring: 0.9, o1lvl: 0.1 }, 'Ring mod')),
@@ -153,7 +153,7 @@ export const SYNTH_B: Lesson[] = [
   Y('10.6', 10, 'Four operators and algorithms', [
     s('FM synths call each sine oscillator an operator. So far you have used two. Real FM sounds use four or more. Operators 3 and 4 work just like operator 2: an amount, a ratio and a decay each.', pn(['f3i', 'f3r', 'fma'], { ...FM, fmi: 2, f3i: 2, f3r: 2 }, 'spectrum')),
     s('An algorithm is how the operators are wired. In a stack, 4 pushes 3, 3 pushes 2, and 2 pushes the carrier: very bright and complex. Side by side, nobody pushes anybody: four plain tones, like an organ.', pf('Stack', { ...FM, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }, 'spectrum', 'hold', { fma: 1 }, 'Side by side')),
-    s('In between are the useful ones. Two pairs gives two separate two-operator sounds on one key. Three into one sends three modulators into one carrier, each adding its own harmonics.', pf('Two pairs', { ...FM, fma: 2, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }, 'spectrum', 'hold', { fma: 3 }, 'Three into one')),
+    s('In between are the useful ones. Two pairs gives two separate two-operator sounds on one key. Three into one sends three modulators into one carrier, each adding its own harmonics. The last two choices mix these ideas: a short stack beside one plain tone, and a pair beside two plain tones.', pf('Two pairs', { ...FM, fma: 2, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }, 'spectrum', 'hold', { fma: 3 }, 'Three into one')),
   ], [nm('Name the algorithm', 'Four operators are on. How are they wired?', [['Stack: a chain of four', { fma: 0 }], ['Side by side: four plain tones', { fma: 1 }], ['Two pairs', { fma: 2 }]], { ...FM, fmi: 2, f3i: 2, f3r: 2, f4i: 1.5, f4r: 3 }), ab('More or less of operator 3', 'f3i', { ...FM, fma: 3, fmi: 1.5, f3r: 4 }, { lo: 0, hi: 0.8, gap: 0.35 }), quiz('Operators and algorithms', 'fm')], ['fma', 'f3i', 'f3r', 'f3d', 'f4i', 'f4r', 'f4d']),
   Y('10.7', 10, 'FM bell', [
     s('Bells are FM\'s party trick. A bell has partials that do not line up neatly, so use three into one with operators 2 and 3 at different high ratios.', pf('An FM bell', eg('fmbell'), 'spectrum', 'pluck')),
@@ -192,7 +192,7 @@ export const SYNTH_B: Lesson[] = [
   Y('11.5', 11, 'Sampling', [
     s('A sampler uses a recording as its sound source. Play a higher key and it plays the recording faster, which raises the pitch. This engine has one short built-in recording.', pf('The recording on three notes', { eng: 2 }, undefined, 'pluck')),
     s('Start sets where in the recording playback begins. Move it later and you skip the breathy attack and get only the tone.', pn(['sstart'], { eng: 2 }, undefined, 'hold')),
-  ], [ab('Earlier or later start', 'sstart', { eng: 2 }, { lo: 0, hi: 0.5, gap: 0.3 }), quiz('Sampling facts', 'sampling')], ['sstart']),
+  ], [ab('With or without the breathy start', 'sstart', { eng: 2 }, { lo: 0, hi: 0.45, gap: 0.4, say: ['skips the breathy start of the recording', 'includes the breathy start of the recording'] }), quiz('Sampling facts', 'sampling')], ['sstart']),
   Y('11.6', 11, 'Loops', [
     s('A recording ends. To hold a note longer than that, the sampler loops a section of it for as long as the key is down.', pn(['sloop', 'slen'], { eng: 2, sstart: 0.3, sloop: 1 }, undefined, 'long')),
     s('A long loop sounds natural. A very short loop repeats so fast that it turns into a buzzy tone of its own.', pf('No loop: it runs out', { eng: 2, sstart: 0.3 }, undefined, 'long', { sloop: 1, slen: 0.4 }, 'Looped')),
@@ -200,7 +200,7 @@ export const SYNTH_B: Lesson[] = [
   Y('11.7', 11, 'Granular: grains', [
     s('Granular synthesis chops a recording into tiny slices called grains and plays a stream of them. Position chooses where in the recording the grains come from.', pn(['gpos', 'gsize'], { eng: 3 }, undefined, 'long')),
     s('Because grains keep coming from the same spot, the sound can freeze on one instant of the recording for as long as you like. Longer grains sound smoother; very short ones sound buzzy.', pf('Short grains', { eng: 3, gsize: 0.015 }, undefined, 'long', { gsize: 0.2 }, 'Long grains')),
-  ], [ab('Longer or shorter grains', 'gsize', { eng: 3 }, { seq: 'long', lo: 0, hi: 1, gap: 0.5 }), ab('Earlier or later position', 'gpos', { eng: 3, gsize: 0.1 }, { seq: 'long', lo: 0.05, hi: 0.9, gap: 0.55 })], ['gpos', 'gsize']),
+  ], [ab('Longer or shorter grains', 'gsize', { eng: 3 }, { seq: 'long', lo: 0, hi: 1, gap: 0.5 }), ab('Earlier or later position', 'gpos', { eng: 3, gsize: 0.1 }, { seq: 'long', lo: 0.05, hi: 0.9, gap: 0.55, say: ['takes its grains from later in the recording (darker)', 'takes its grains from earlier in the recording (brighter)'] })], ['gpos', 'gsize']),
   Y('11.8', 11, 'Granular: density and scatter', [
     s('Density is how many grains start each second. Few, and you hear separate blips. Many, and they fuse into a smooth cloud.', pn(['gdens', 'gjit'], { eng: 3 }, undefined, 'long')),
     s('Scatter spreads the grains around the position, so each one catches a slightly different moment. The texture gets richer and less static.', pf('Sparse', { eng: 3, gdens: 4, gsize: 0.05 }, undefined, 'long', { gdens: 40 }, 'Dense')),
@@ -208,9 +208,9 @@ export const SYNTH_B: Lesson[] = [
   Y('11.9', 11, 'A plucked string', [
     s('Physical modelling imitates how an instrument works. This model is a plucked string: a burst of noise goes round a very short delay loop, losing a little brightness on every lap.', pn(['kdamp', 'kdecay'], { eng: 4 }, undefined, 'pluck')),
     s('Damping sets how dull the string is. Ring time sets how long it sounds. There is no oscillator and no filter, and it still sounds like a real pluck.', pf('Bright, long', { eng: 4, kdamp: 0.1, kdecay: 0.95 }, undefined, 'pluck', { kdamp: 0.9, kdecay: 0.3 }, 'Dull, short')),
-  ], [ab('Damping and ring time', ['kdamp', 'kdecay'], { eng: 4 }, { seq: 'pluck', lo: 0, hi: 1, gap: 0.5 }), mN('Match the string', ['kdamp', 'kdecay'], { eng: 4 }, { seq: 'pluck', view: 'none', ranges: { kdamp: [0, 1], kdecay: [0.1, 1] }, tolK: 2 })], ['kdamp', 'kdecay']),
+  ], [ab('Damping and ring time', ['kdamp', 'kdecay'], { eng: 4 }, { seq: 'pluck', lo: 0, hi: 1, gap: 0.5 }), mN('Match the string', ['kdamp', 'kdecay'], { eng: 4 }, { seq: 'pluck', view: 'none', ranges: { kdamp: [0, 1], kdecay: [0.1, 1] }, tolK: 2 }), quiz('Plucked string facts', 'physical')], ['kdamp', 'kdecay']),
   Y('11.10', 11, 'Pick the engine', [
-    s('Five ways to make a tone: subtractive carves a bright wave, additive stacks sines, sampling replays a recording, granular sprays slices of one, and physical modelling imitates an instrument. FM and wavetables are two more kinds of oscillator.'),
+    s('Five ways to make a tone: subtractive carves a bright wave, additive stacks sines, sampling replays a recording, granular sprays slices of one, and physical modelling imitates an instrument. FM and wavetables are two more kinds of oscillator.', ps(ENGINES, undefined, 'pluck')),
     s('Each has a character you can learn to hear. Name the engine behind each sound.', undefined, tr('S2', { opts: ENGINES, seq: 'pluck', q: 'Which engine made this sound?' })),
   ], [nm('Name the engine', 'Which engine made this sound?', ENGINES, {}, 'pluck'), quiz('The right engine for the job', 'engines')]),
 
@@ -230,8 +230,8 @@ export const SYNTH_B: Lesson[] = [
   ], [quiz('CV and gate', 'cv'), flow('Patch it by hand', 'cv')]),
   Y('12.4', 12, 'Arpeggiator and sequencer', [
     s('An arpeggiator takes the keys you hold and plays them one at a time, in time with the tempo. Hold a chord and it becomes a pattern.', pn(['arp', 'arpr'], { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }, undefined, 'chord')),
+    s('It has patterns of its own: up, down, up and down, or random. Here is the same three-note chord four ways.', ps([['Up', { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }], ['Down', { arp: 2, ad: 0.15, as: 0.3, cut: 2500 }], ['Up and down', { arp: 3, ad: 0.15, as: 0.3, cut: 2500 }], ['Random', { arp: 4, ad: 0.15, as: 0.3, cut: 2500 }]], undefined, 'chord')),
     s('A step sequencer stores a note, or a rest, for each step of a short loop and plays it round and round. Bass lines, including the acid line from unit 9, are usually sequenced. Program one by ear.', undefined, tr('S15', { len: 4, rests: 0 })),
-    s('The arpeggiator has patterns of its own: up, down, up and down, or random.', pf('Up', { arp: 1, ad: 0.15, as: 0.3, cut: 2500 }, undefined, 'chord', { arp: 4 }, 'Random')),
   ], [nm('Name the arpeggiator pattern', 'A three-note chord is held. Which pattern is the arpeggiator playing?', [['Up', { arp: 1 }], ['Down', { arp: 2 }], ['Up and down', { arp: 3 }]], { ad: 0.15, as: 0.3, cut: 2500 }, 'chord'), u('S15', 'Program a pattern', {}), quiz('Arpeggiators and sequencers', 'seq')], ['arp', 'arpr']),
   Y('12.5', 12, 'MIDI and CC', [
     s('MIDI is the language keyboards, computers and synths use to talk. It carries no sound: only messages such as "note 60 on, velocity 90" and "note 60 off".'),

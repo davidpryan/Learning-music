@@ -3,17 +3,15 @@ import { L, s, tr, u, Lesson, Fig, Step, Unlock } from './types';
 import '../synth/exercises'; // registers exercises S1 to S14 before the skills table is built
 
 export type P = Record<string, number>;
-const TOPIC = ['', 'sound', 'osc', 'filter', 'env', 'shape', 'lfo', 'voices', 'fx', 'fx', 'fm', 'engines', 'panel'];
-const SLOW = ['S6', 'S7', 'S10', 'S12', 'S15'];
-/** A synth lesson. Its 5-question check asks each slow exercise (a full match or a recipe) once and fills the rest with quick ones. */
-export const Y = (id: string, level: number, title: string, steps: Step[], unlocks: Unlock[], adds: string[] = []): Lesson => {
-  const quick = unlocks.filter((x) => !SLOW.includes(x.ex)), fill = quick.length ? quick : [{ ex: 'S13', preset: { topic: TOPIC[level] } }];
-  const quiz: { ex: string; preset: Record<string, any> }[] = unlocks.map((x) => ({ ex: x.ex, preset: x.preset }));
-  for (let i = 0; quiz.length < 5; i++) quiz.push(fill[i % fill.length]);
-  return L('S' + id, 'synth', level, title, steps, unlocks, { adds, quiz: unlocks.some((x) => SLOW.includes(x.ex)) ? quiz : undefined });
-};
+/** Fact topics a unit's checks may draw on to reach five questions. Each fact is used only from the lesson that teaches it on. */
+const TOPIC: (string | string[])[] = ['', 'sound', 'osc', 'filter', 'env', 'shape', 'lfo', 'voices', 'fx', ['osc', 'filter', 'env', 'shape', 'voices'], ['sync', 'fm'], ['wavetable', 'additive', 'sampling', 'granular', 'physical', 'engines'], ['matrix', 'cv', 'seq', 'midi', 'panel', 'mix']];
+/** A synth lesson. Its check is planned from its unlocks when it is taken (see check.ts). */
+export const Y = (id: string, level: number, title: string, steps: Step[], unlocks: Unlock[], adds: string[] = []): Lesson =>
+  L('S' + id, 'synth', level, title, steps, unlocks.map((x) => (x.ex === 'S13' ? { ...x, preset: { ...x.preset, at: id } } : x)), { adds, fill: { ex: 'S13', preset: { topic: TOPIC[level], at: id } } });
 export const pf = (label: string, patch: P = {}, view?: 'wave' | 'spectrum' | 'env', seq?: string, vs?: P, vsLabel?: string): Fig => ({ patch, label, view, seq, vs, vsLabel });
-export const pn = (panel: string[], patch: P = {}, view?: 'wave' | 'spectrum' | 'env', seq?: string, label?: string): Fig => ({ panel, patch, view, seq, label });
+export const pn = (panel: string[], patch: P = {}, view?: 'wave' | 'spectrum' | 'env', seq?: string, label?: string, limit?: P): Fig => ({ panel, patch, view, seq, label, limit });
+/** Three or more named sounds to play and compare. */
+export const ps = (sounds: [string, P][], view?: 'wave' | 'spectrum' | 'env', seq?: string): Fig => ({ sounds, view, seq });
 export const ab = (title: string, ctl: string | string[], base: P = {}, more: Record<string, any> = {}) => u('S1', title, { ctl: Array.isArray(ctl) ? ctl : [ctl], base, ...more });
 export const nm = (title: string, q: string, opts: [string, P][], base: P = {}, seq = 'hold') => u('S2', title, { opts, base, seq, q });
 export const chg = (title: string, ctls: string[], base: P = {}, seq = 'hold') => u('S3', title, { ctls, base, seq });
@@ -49,7 +47,7 @@ export const SYNTH_A: Lesson[] = [
   ], [nm('Pure or buzzy', 'Is this tone pure or buzzy?', [['Pure', { o1w: 0 }], ['Buzzy', { o1w: 2 }]])]),
   Y('1.4', 1, 'Harmonics', [
     s('A buzzy sound is really many pure tones stacked up. The lowest is the fundamental: the note you hear. The ones above are harmonics, at 2, 3, 4… times its frequency.', pf('One pure tone', { o1w: 0 }, 'spectrum', 'hold', { o1w: 2 }, 'A stack of harmonics')),
-    s('The picture is a spectrum: low frequencies on the left, high on the right. The pure tone is one hump. The buzzy tone has a hump for every harmonic.'),
+    s('This kind of picture is a spectrum: low frequencies on the left, high on the right. The pure tone is one hump. The buzzy tone has a hump for every harmonic.', ps([['Pure', { o1w: 0 }], ['Buzzy', { o1w: 2 }]], 'spectrum')),
     s('More and louder harmonics mean a brighter sound. Fewer mean a darker one. That is the whole idea behind timbre.', pf('Dark', { cut: 400 }, 'spectrum', 'hold', { cut: 16000 }, 'Bright')),
   ], [quiz('Harmonics and timbre', 'sound'), pic('Pure or buzzy, from the spectrum', [['Pure', { o1w: 0 }], ['Buzzy', { o1w: 2 }]], 'spectrum')]),
   Y('1.5', 1, 'Reading a waveform', [
@@ -59,12 +57,12 @@ export const SYNTH_A: Lesson[] = [
   ], [pic('Smooth or sharp waveform', [['Pure', { o1w: 0 }], ['Buzzy', { o1w: 2 }]], 'wave')]),
   Y('1.6', 1, 'Reading a spectrum', [
     s('A spectrum shows what a sound is made of, not how it moves. It is the picture to reach for when you ask "how bright is this?"', pf('Dark', { cut: 400 }, 'spectrum', 'hold', { cut: 3000 }, 'Brighter')),
-    s('The further the humps reach to the right, the brighter the sound. Here are three sounds: dark, medium and bright. Learn to tell them apart by eye and by ear.', pf('Medium', { cut: 1500 }, 'spectrum')),
+    s('The further the humps reach to the right, the brighter the sound. Here are three sounds: dark, medium and bright. Learn to tell them apart by eye and by ear.', ps([['Dark', { cut: 350 }], ['Medium', { cut: 1500 }], ['Bright', { cut: 16000 }]], 'spectrum')),
   ], [pic('Dark, medium or bright', [['Dark', { cut: 350 }], ['Medium', { cut: 1500 }], ['Bright', { cut: 16000 }]], 'spectrum'), nm('Dark, medium or bright, by ear', 'How bright is this sound?', [['Dark', { cut: 350 }], ['Medium', { cut: 1500 }], ['Bright', { cut: 16000 }]])]),
 
   // ---------------- Unit 2: Oscillators ----------------
   Y('2.1', 2, 'The oscillator: sine and triangle', [
-    s('The oscillator is where the sound starts. It repeats one wave shape over and over at the pitch of the note. The shape decides the raw tone.', pn(['o1w'], { o1w: 0 }, 'wave')),
+    s('The oscillator is where the sound starts. It repeats one wave shape over and over at the pitch of the note. The shape decides the raw tone.', pn(['o1w'], { o1w: 0 }, 'wave', 'hold', undefined, { o1w: 1 })),
     s('A sine is the pure tone from unit 1: no harmonics at all. A triangle adds a few quiet ones, so it is a touch brighter while staying soft.', pf('Sine', { o1w: 0 }, 'spectrum', 'hold', { o1w: 1 }, 'Triangle')),
   ], [nm('Sine or triangle', 'Which waveform is this?', [['Sine', { o1w: 0 }], ['Triangle', { o1w: 1 }]]), pic('Sine and triangle pictures', [['Sine', { o1w: 0 }], ['Triangle', { o1w: 1 }]], 'wave')], ['o1w']),
   Y('2.2', 2, 'Saw and square', [
@@ -94,8 +92,8 @@ export const SYNTH_A: Lesson[] = [
   ], [ab('More or less detuned', 'o2det', { o2lvl: 0.8 }, { seq: 'long', lo: 0.05, hi: 0.9, gap: 0.35 }), m1('Match the detune', 'o2det', { o2lvl: 0.8 }, { seq: 'long', view: 'none', lo: 0.05, hi: 0.9, tolK: 1.8 })], ['o2det']),
   Y('2.8', 2, 'Sub oscillator and a two-oscillator tone', [
     s('A sub oscillator is a simple square wave one octave below the note. It adds weight without changing the character on top.', pn(['sublvl'], {}, 'spectrum')),
-    s('You now have the whole sound source: two oscillators, a sub, noise, and a mixer. Rebuild a two-oscillator tone by ear.', undefined, tr('S6', { ctls: ['o1w', 'o2w', 'o2lvl'], base: { o2oct: 1 }, ranges: { o2lvl: [0.3, 0.95] }, view: 'wave', show: true, tolK: 2 })),
-  ], [ab('More or less sub', 'sublvl', {}, { lo: 0.05, hi: 0.9 }), mN('Match a two-oscillator tone', ['o1w', 'o2w', 'o2lvl'], { o2oct: 1 }, { ranges: { o2lvl: [0.3, 0.95] }, view: 'wave', show: true, tolK: 2 })], ['sublvl']),
+    s('You now have the whole sound source: two oscillators, a sub, noise, and a mixer. Rebuild a two-oscillator tone by ear.', undefined, tr('S6', { ctls: ['o1w', 'o2w', 'o2lvl'], base: { o2oct: 1 }, ranges: { o2lvl: [0.3, 0.95] }, limit: { o1w: 3, o2w: 3 }, view: 'wave', show: true, tolK: 2 })),
+  ], [ab('More or less sub', 'sublvl', {}, { lo: 0.05, hi: 0.9 }), mN('Match a two-oscillator tone', ['o1w', 'o2w', 'o2lvl'], { o2oct: 1 }, { ranges: { o2lvl: [0.3, 0.95] }, limit: { o1w: 3, o2w: 3 }, view: 'wave', show: true, tolK: 2 })], ['sublvl']),
 
   // ---------------- Unit 3: Filters ----------------
   Y('3.1', 3, 'The low-pass filter', [
@@ -104,7 +102,7 @@ export const SYNTH_A: Lesson[] = [
     s('Cutoff is the most-used control on any synth. Match one with the picture to help.', undefined, tr('S5', { ctl: ['cut'], base: {}, show: true })),
   ], [ab('Brighter or darker', 'cut', {}, { lo: 0.2, hi: 0.95 }), m1('Match the cutoff', 'cut', {}, { lo: 0.25, hi: 0.95 })], ['cut']),
   Y('3.2', 3, 'Cutoff by ear', [
-    s('Pictures help at first, but the skill is hearing it. Listen for where the brightness stops: a low cutoff sounds muffled, a middle one "ooh", a high one "aah".', pf('Muffled', { cut: 300 }, undefined, 'hold', { cut: 2500 }, 'Open')),
+    s('Pictures help at first, but the skill is hearing it. Listen for where the brightness stops: a low cutoff sounds muffled, a middle one "ooh", a high one "aah".', ps([['Muffled', { cut: 300 }], ['Ooh', { cut: 1000 }], ['Aah', { cut: 3000 }]])),
     s('When you compare, flip between the target and yours quickly. Your ear remembers brightness for only a second or two.'),
   ], [dir('Cutoff: which way, how far', 'cut'), m1('Match the cutoff by ear', 'cut', {}, { lo: 0.25, hi: 0.95, show: false, view: 'none' })]),
   Y('3.3', 3, 'Resonance', [
@@ -116,7 +114,7 @@ export const SYNTH_A: Lesson[] = [
     s('When matching both, set the cutoff first using the overall brightness. Then listen only for the whistle and set the resonance.'),
   ], [chg('Cutoff or resonance?', ['cut', 'res'], { cut: 1200, res: 0.35 }), mN('Match cutoff and resonance', ['cut', 'res'], {}, { ranges: { cut: [0.35, 0.8], res: [0.05, 0.85] }, show: true })]),
   Y('3.5', 3, 'The high-pass filter', [
-    s('A high-pass filter is the reverse: it lets the highs pass and removes the lows. Raise the cutoff and the body of the sound drains away, leaving it thin.', pn(['ft', 'cut'], { ft: 1, cut: 400 }, 'spectrum')),
+    s('A high-pass filter is the reverse: it lets the highs pass and removes the lows. Raise the cutoff and the body of the sound drains away, leaving it thin.', pn(['ft', 'cut'], { ft: 1, cut: 400 }, 'spectrum', 'hold', undefined, { ft: 1 })),
     s('High-pass is how you make room for a bass under a pad, or turn noise into a hi-hat.', pf('Low-pass at 700 Hz', { cut: 700 }, 'spectrum', 'hold', { ft: 1 }, 'High-pass at 700 Hz')),
   ], [nm('Low-pass or high-pass', 'Which filter type is this?', [['Low-pass', { ft: 0 }], ['High-pass', { ft: 1 }]], { cut: 700 }), m1('Match a high-pass cutoff', 'cut', { ft: 1 }, { lo: 0.15, hi: 0.7 })], ['ft']),
   Y('3.6', 3, 'Band-pass and notch', [
@@ -140,11 +138,11 @@ export const SYNTH_A: Lesson[] = [
   Y('4.1', 4, 'Attack', [
     s('So far every note has switched on and off like a light. The amp envelope shapes the loudness of each note over time. It has four stages. The first is attack.', pn(['aa'], {}, 'env', 'gate')),
     s('Attack is how long the note takes to reach full loudness. Short attack: the note hits. Long attack: it swells in.', pf('Fast attack', {}, 'env', 'gate', { aa: 0.6 }, 'Slow attack')),
-  ], [ab('Faster or slower attack', 'aa', {}, { seq: 'gate', lo: 0.1, hi: 0.8 }), m1('Match the attack', 'aa', {}, { seq: 'gate', view: 'env', lo: 0.1, hi: 0.8 })], ['aa']),
+  ], [ab('Faster or slower attack', 'aa', {}, { seq: 'gate', lo: 0.35, hi: 0.9 }), m1('Match the attack', 'aa', {}, { seq: 'gate', view: 'env', lo: 0.35, hi: 0.85 })], ['aa']),
   Y('4.2', 4, 'Release', [
     s('Release is what happens after you let go of the key: how long the note takes to fade to silence.', pn(['ar'], {}, 'env', 'gate')),
     s('Short release: the note stops with your finger. Long release: it rings on, and notes overlap into a wash.', pf('Short release', { ar: 0.03 }, 'env', 'gate', { ar: 1.2 }, 'Long release')),
-  ], [ab('Shorter or longer release', 'ar', {}, { seq: 'gate', lo: 0.15, hi: 0.85 }), m1('Match the release', 'ar', {}, { seq: 'gate', view: 'env', lo: 0.15, hi: 0.85 })], ['ar']),
+  ], [ab('Shorter or longer release', 'ar', {}, { seq: 'gate', lo: 0.3, hi: 0.9 }), m1('Match the release', 'ar', {}, { seq: 'gate', view: 'env', lo: 0.3, hi: 0.85 })], ['ar']),
   Y('4.3', 4, 'Sustain', [
     s('Sustain is the level the note settles at while the key is held. It is the only one of the four that is a level, not a time.', pn(['as'], { ad: 0.25 }, 'env', 'gate')),
     s('Full sustain: the note holds at full loudness like an organ. Zero sustain: the note dies away even if you keep holding, like a plucked string.', pf('Full sustain', { ad: 0.25 }, 'env', 'gate', { as: 0.2 }, 'Low sustain')),
@@ -168,7 +166,7 @@ export const SYNTH_A: Lesson[] = [
 
   // ---------------- Unit 5: Shaping over time ----------------
   Y('5.1', 5, 'The filter envelope', [
-    s('A second envelope can move the filter cutoff during each note, so the tone changes as the note plays. Envelope amount sets how far it pushes the cutoff.', pn(['fenv', 'cut'], { cut: 300, fd: 0.4, res: 0.2 }, 'env', 'gate')),
+    s('A second envelope can move the filter cutoff during each note, so the tone changes as the note plays. Envelope amount sets how far it pushes the cutoff.', pn(['fenv', 'cut'], { cut: 300, fd: 0.4, res: 0.2 }, undefined, 'gate')),
     s('Set the cutoff low, then turn the amount up: each note now starts bright and closes down. This is the sound of most synth basses and plucks.', pf('No envelope', { cut: 300, fd: 0.4 }, undefined, 'gate', { fenv: 0.6 }, 'With envelope')),
   ], [ab('Bigger or smaller filter sweep', 'fenv', { cut: 300, fd: 0.4, res: 0.2 }, { seq: 'gate', lo: 0.5, hi: 1, gap: 0.2 }), m1('Match the envelope amount', 'fenv', { cut: 300, fd: 0.4, res: 0.2 }, { seq: 'gate', view: 'none', lo: 0.5, hi: 1, tolK: 1.4 })], ['fenv', 'fd']),
   Y('5.2', 5, 'Filter decay', [
@@ -176,9 +174,9 @@ export const SYNTH_A: Lesson[] = [
     s('Because the amp envelope is separate, a note can stay loud while its brightness fades. That independence is what makes synth sounds feel alive.', pf('Fast filter decay', { cut: 300, fenv: 0.6, fd: 0.08 }, undefined, 'gate', { fd: 0.7 }, 'Slow filter decay')),
   ], [ab('Faster or slower filter sweep', 'fd', { cut: 300, fenv: 0.6, res: 0.2 }, { seq: 'gate', lo: 0.3, hi: 0.75 }), m1('Match the filter decay', 'fd', { cut: 300, fenv: 0.6, res: 0.2 }, { seq: 'gate', view: 'none', lo: 0.3, hi: 0.75, tolK: 1.4 })]),
   Y('5.3', 5, 'A full filter envelope', [
-    s('The filter envelope has all four stages. Attack makes the tone open up after the note starts, which is the "bwah" of brass. Sustain sets how bright the held note stays.', pn(['fa', 'fd', 'fs', 'fr'], { cut: 300, fenv: 0.6, fd: 0.3 }, undefined, 'gate')),
+    s('The filter envelope has all four stages. Attack makes the tone open up after the note starts, which is the "bwah" of brass. Sustain sets how bright the held note stays.', pn(['fa', 'fd', 'fs', 'fr'], { cut: 300, fenv: 0.6, fd: 0.3, fs: 0.5, ar: 1.2 }, undefined, 'gate', 'The note here fades out slowly, so you can hear the filter release close the tone after the key is let go.')),
     s('Listen for two things: does the brightness rise at the start (attack), and where does it settle (sustain)?', pf('Instant brightness', { cut: 300, fenv: 0.6, fd: 0.3 }, undefined, 'gate', { fa: 0.15, fs: 0.6 }, 'Rising, then holding')),
-  ], [chg('Which filter envelope stage changed?', ['fa', 'fd', 'fs'], { cut: 300, fenv: 0.6, fa: 0.03, fd: 0.25, fs: 0.4 }, 'gate'), mN('Match filter attack and sustain', ['fa', 'fs'], { cut: 300, fenv: 0.6, fd: 0.3 }, { seq: 'gate', view: 'none', ranges: { fa: [0.15, 0.65], fs: [0.05, 0.9] }, tolK: 1.8 })], ['fa', 'fs', 'fr']),
+  ], [chg('Which filter envelope stage changed?', ['fa', 'fd', 'fs'], { cut: 300, fenv: 0.6, fa: 0.03, fd: 0.25, fs: 0.4 }, 'gate'), mN('Match filter attack and sustain', ['fa', 'fs'], { cut: 300, fenv: 0.6, fd: 0.3 }, { seq: 'gate', view: 'none', ranges: { fa: [0.35, 0.72], fs: [0.05, 0.9] }, tolK: 1.8 })], ['fa', 'fs', 'fr']),
   Y('5.4', 5, 'Negative amounts', [
     s('Envelope amount can go below zero. Then the envelope pulls the cutoff down at the start of the note and lets it come back up: each note starts dark and opens.', pf('Positive: bright, then dark', { cut: 400, fenv: 0.6, fd: 0.4 }, undefined, 'gate', { cut: 5000, fenv: -0.6 }, 'Negative: dark, then bright')),
     s('Many controls on a synth are like this: zero in the middle, with opposite effects either side.'),
@@ -233,5 +231,5 @@ export const SYNTH_A: Lesson[] = [
   Y('6.8', 6, 'Describe any modulation', [
     s('To copy a moving sound, answer three questions in order. What is moving: pitch, tone, loudness? How fast? What shape: smooth, flipping, or random?'),
     s('Then match a wobble by ear: set the rate first, then the depth.', undefined, tr('S11', { dests: ['l1p', 'l1f', 'l1a'], shapes: true, rates: true })),
-  ], [modq('Destination, speed and shape', ['l1p', 'l1f', 'l1a'], { shapes: true, rates: true }), mN('Match a filter wobble', ['l1r', 'l1f'], { cut: 600, res: 0.3 }, { seq: 'long', view: 'none', ranges: { l1r: [0.3, 0.85], l1f: [0.15, 0.9] }, tolK: 1.8 })]),
+  ], [modq('Destination, speed and shape', ['l1p', 'l1f', 'l1a'], { shapes: true, rates: true }), flow('Why is nothing changing?', 'mod'), mN('Match a filter wobble', ['l1r', 'l1f'], { cut: 600, res: 0.3 }, { seq: 'long', view: 'none', ranges: { l1r: [0.3, 0.85], l1f: [0.15, 0.9] }, tolK: 1.8 })]),
 ];

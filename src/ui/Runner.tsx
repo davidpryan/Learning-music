@@ -16,7 +16,7 @@ import { Icon, InputSwitch, MicBar, MidiBar } from './common';
 import { Performer, PerfExtra } from './Perform';
 import { MatchArea, VizView, PatternArea, PanelArea } from '../synthload';
 
-export interface RunItem { ex: string; preset: Record<string, any>; skillId?: string }
+export interface RunItem { ex: string; preset: Record<string, any>; skillId?: string; /** A planned check fixes the question in advance. */ seed?: number }
 export interface RunnerProps {
   items: RunItem[]; count: number; ctx: string; auto?: boolean; combo?: number; seedBase?: number; scan?: number; tempoOverride?: number;
   onAnswer?: (ok: boolean, q: Question, x?: PerfExtra) => void; onDone: (r: { correct: number; total: number }) => void; bare?: boolean; question?: Question; noReplay?: boolean; arcade?: boolean;
@@ -28,6 +28,7 @@ function makeQ(it: RunItem, idx: number, seedBase?: number): Question {
   if (EX[it.ex].track === 'ear' && reps > 5) params.rot = true;
   // Once a one-knob match is familiar, the target's picture is hidden: match by ear alone.
   if (it.ex === 'S5' && reps > 6) params.show = false;
+  if (it.seed != null) return EX[it.ex].gen(params, mulberry(it.seed));
   // Seeded runs (daily challenge, fixed stages) keep their own history so they stay the same for everyone.
   const bucket = `${it.ex}:${JSON.stringify(it.preset)}` + (seedBase != null ? `:seed${seedBase}` : '');
   if (seedBase != null && idx === 0) forget(bucket);

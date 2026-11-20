@@ -6,7 +6,7 @@ import { playSeq, click, now, stopAll } from '../audio';
 import { Keyboard } from './Keyboard';
 import { P, midi } from '../music';
 import type { Fig } from '../content/types';
-import { PanelFig, PatchFig } from '../synthload';
+import { PanelFig, PatchFig, SoundsFig } from '../synthload';
 import { micState, midiState, onInputState, startMic, stopMic, initMidi } from '../input';
 import { get, set, useS, InputMode } from '../store';
 
@@ -96,6 +96,7 @@ export function figPassage(f: Extract<Fig, { staff: string }>): Passage {
 export const playPassage = (p: Passage, tempo = p.tempo) => playSeq(onsets(p).map((o) => ({ t: o.t, d: o.d, midis: p.staves[o.staff].clef === 'percussion' ? [76] : o.midis })), tempo, p.staves[0].clef === 'percussion' ? 'piano' : get().profile.settings.timbre, 0.05, false);
 function PlayBtn({ onPlay, label }: { onPlay: () => void; label: string }) { return <button className="btn sm" onClick={() => { stopAll(); onPlay(); }}><Icon name="playtri" size={14} />{label}</button>; }
 export function Figure({ fig }: { fig: Fig }) {
+  if ('sounds' in fig) return <SoundsFig fig={fig} />;
   if ('panel' in fig) return <PanelFig fig={fig} />;
   if ('patch' in fig) return <PatchFig fig={fig} />;
   if ('staff' in fig) { const p = figPassage(fig); return <div className="col" style={{ gap: 8 }}><Score spec={{ passage: p, showTime: !!fig.time || !!fig.perc }} />{fig.play && <div><PlayBtn label="Listen" onPlay={() => playPassage(p, p.free ? 84 : p.tempo)} /></div>}</div>; }

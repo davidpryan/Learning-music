@@ -27,7 +27,10 @@ await click('Skip setup'); await click('Synth'); await click('Learn', '.tabbar b
 await click('S1.1', 'button.node'); await click('Start lesson');
 await click('Play'); check('dev build: the worklet loads and the lesson figure sounds', (await loudest(1500)) > 0.01);
 await click('Next'); await click('Next'); await sleep(300); await click('Take the check'); await sleep(500);
-for (let i = 0; i < 5; i++) await answer();
+const planned = await page.evaluate(() => +(/Check · (\d+) questions/.exec(document.querySelector('.shell:not([hidden])').innerText)?.[1] ?? 0));
+check('the check is planned: four questions for a lesson with four things to ask', planned === 4, 'planned ' + planned);
+const asked = []; for (let i = 0; i < planned; i++) { asked.push(await page.evaluate(() => window.__q.prompt)); await answer(); }
+check('no question in the check is asked twice', new Set(asked).size === asked.length, asked.join(' / '));
 check('answering the check passes the lesson', await has('Lesson passed'), await page.evaluate(() => document.querySelector('.shell:not([hidden])').innerText.slice(0, 120)));
 await click('Continue'); await sleep(400);
 await click('S1.2', 'button.node'); check('the next lesson is open', await has('Start lesson')); await page.keyboard.press('Escape'); await sleep(300);

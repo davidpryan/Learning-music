@@ -4,7 +4,7 @@ import { Rng, pick, shuffle, rint } from '../music';
 import { Patch, SeqNote, PD, mkPatch, norm, denorm, fmt, isChoice, isStepped } from './dsp';
 import { features } from './analysis';
 import { play, playSeries } from './live';
-import { QUIZ, FLOW, SKINS, PANEL_SETS, RECIPES } from './bank';
+import { QUIZ, QUIZ_AT, FLOW, SKINS, PANEL_SETS, RECIPES } from './bank';
 
 // ---------- phrases the exercises play ----------
 export const SEQS: Record<string, { n: SeqNote[]; loop: number }> = {
@@ -37,9 +37,20 @@ const MORE: Record<string, string> = {
   glide: 'slides between notes more slowly', uni: 'has more voices stacked', uspread: 'is wider and more detuned', dist: 'is more distorted', cho: 'has more chorus', pha: 'has more phaser', fla: 'has more flanger',
   dly: 'has louder echoes', dtime: 'has the longer gap between echoes', dfb: 'echoes more times', rev: 'has more reverb', rsize: 'is in the bigger room', eqlo: 'has more bass', eqhi: 'has more treble', comp: 'is more compressed (quiet parts brought up)',
   fmi: 'has more FM (brighter and more metallic)', fmd: 'loses its brightness faster', fmf: 'is harsher and noisier', wtpos: 'is further along the wavetable (brighter and thinner)', ah: 'has more harmonics', atilt: 'is darker (upper harmonics quieter)', aeven: 'has more even harmonics (less hollow)',
-  sstart: 'starts later in the recording', slen: 'has the longer loop', gpos: 'reads from later in the recording', gsize: 'has longer, smoother grains', gdens: 'is denser', gjit: 'is more scattered', kdamp: 'is duller', kdecay: 'rings longer', vol: 'is louder', avel: 'reacts more to how hard you play', fvel: 'gets brighter when played harder',
+  sstart: 'starts later in the recording', slen: 'has the longer loop', gpos: 'reads from later in the recording', gsize: 'has longer, smoother grains', gdens: 'is denser', gjit: 'is more scattered', kdamp: 'is duller', kdecay: 'rings longer', vol: 'is louder', f3i: 'has more of operator 3 (more added harmonics)', m1a: 'has the deeper modulation', avel: 'reacts more to how hard you play', fvel: 'gets brighter when played harder',
 };
-const more = (id: string) => MORE[id] ?? `has more ${PD[id].label.toLowerCase()}`;
+/** The same, when a control goes down. Each A/B question is asked one way or the other. */
+const LESS: Record<string, string> = {
+  cut: 'is darker', res: 'has less resonance (less of a whistle at the cutoff)', drive: 'is cleaner, with less drive', aa: 'starts more quickly', ad: 'dies away more quickly', as: 'holds at a quieter level', ar: 'stops sooner after the note ends',
+  o1oct: 'is lower', o2oct: 'has the lower second oscillator', o2semi: 'has the lower second oscillator', o2det: 'is less detuned (beats more slowly)', pw: 'is thinner and more nasal', o2lvl: 'has less of the second oscillator', sublvl: 'has less sub bass', nlvl: 'is less noisy', ring: 'has less ring modulation (less clang)',
+  fenv: 'has the smaller filter sweep', fd: 'has the faster filter sweep', fa: 'has the faster filter rise', penv: 'starts closer to its final pitch', pdec: 'settles on its pitch sooner', ktrk: 'stays duller as the notes go up',
+  l1r: 'wobbles more slowly', l1p: 'has shallower vibrato', l1f: 'has the shallower filter wobble', l1a: 'has shallower tremolo', l1w: 'has less movement in the pulse width', l1fade: 'brings the vibrato in sooner',
+  glide: 'slides between notes more quickly', uni: 'has fewer voices stacked', uspread: 'is narrower and less detuned', dist: 'is less distorted', cho: 'has less chorus', pha: 'has less phaser', fla: 'has less flanger',
+  dly: 'has quieter echoes', dtime: 'has the shorter gap between echoes', dfb: 'echoes fewer times', rev: 'has less reverb', rsize: 'is in the smaller room', eqlo: 'has less bass', eqhi: 'has less treble', comp: 'is less compressed (soft notes stay soft)',
+  fmi: 'has less FM (darker and purer)', fmd: 'keeps its brightness longer', fmf: 'is smoother, with less feedback', f3i: 'has less of operator 3', wtpos: 'is earlier in the wavetable (rounder and purer)', ah: 'has fewer harmonics', atilt: 'is brighter (upper harmonics louder)', aeven: 'has fewer even harmonics (more hollow)',
+  sstart: 'starts earlier in the recording', slen: 'has the shorter loop', gpos: 'reads from earlier in the recording', gsize: 'has shorter, buzzier grains', gdens: 'is sparser', gjit: 'is less scattered', kdamp: 'is brighter', kdecay: 'dies away sooner', vol: 'is quieter', avel: 'reacts less to how hard you play', fvel: 'changes less in brightness when played harder', m1a: 'has the shallower modulation',
+};
+const more = (id: string) => MORE[id] ?? `has more ${PD[id].label.toLowerCase()}`, less = (id: string) => LESS[id] ?? `has less ${PD[id].label.toLowerCase()}`;
 const name = (id: string, among: string[]) => (among.filter((x) => PD[x].label === PD[id].label).length > 1 ? `${PD[id].group} ${PD[id].label.toLowerCase()}` : PD[id].label);
 const rnd = (r: Rng, lo: number, hi: number) => lo + r() * (hi - lo);
 const list = (x: string | string[]) => (Array.isArray(x) ? x : [x]);
@@ -49,9 +60,10 @@ const def = (d: Omit<ExDef, 'track' | 'params'>) => { const e: ExDef = { ...d, t
 
 def({ id: 'S1', name: 'A/B compare', blurb: 'Two sounds, one control apart. Pick the one that fits the description.', target: 8000, defaults: { ctl: ['cut', 'res', 'aa', 'ar'], base: { cut: 1500 }, lo: 0.15, hi: 0.85, gap: 0.3, seq: 'hold' },
   gen: (p, r) => {
-    const ctl = pick(r, list(p.ctl)), a = rnd(r, p.lo, Math.max(p.lo, p.hi - p.gap)), b = Math.min(1, a + p.gap + r() * 0.1), firstHigh = r() < 0.5, base = mkPatch(p.base);
-    const lo = { ...base, [ctl]: denorm(ctl, a) }, hi = { ...base, [ctl]: denorm(ctl, b) };
-    return slots(`Which one ${more(ctl)}?`, [{ label: 'Answer', choices: ['First', 'Second'], value: firstHigh ? 'First' : 'Second' }], ctl, `The ${firstHigh ? 'first' : 'second'} had ${PD[ctl].label.toLowerCase()} at ${fmt(ctl, hi[ctl])}; the other was at ${fmt(ctl, lo[ctl])}.`, { play: firstHigh ? two(hi, lo, p.seq) : two(lo, hi, p.seq), sub: 'You will hear two sounds.' });
+    const ctl = pick(r, list(p.ctl)), askMore = r() < 0.5, a = rnd(r, p.lo, Math.max(p.lo, p.hi - p.gap)), b = Math.min(1, a + p.gap + r() * 0.1), firstHigh = r() < 0.5, base = mkPatch(p.base);
+    const lo = { ...base, [ctl]: denorm(ctl, a) }, hi = { ...base, [ctl]: denorm(ctl, b) }, right = firstHigh === askMore ? 'First' : 'Second';
+    // A lesson can supply its own two descriptions where the general ones would mislead (p.say: [when higher, when lower]).
+    return slots(`Which one ${askMore ? p.say?.[0] ?? more(ctl) : p.say?.[1] ?? less(ctl)}?`, [{ label: 'Answer', choices: ['First', 'Second'], value: right }], `${ctl}:${askMore ? 'more' : 'less'}`, `The ${firstHigh ? 'first' : 'second'} had ${PD[ctl].label.toLowerCase()} at ${fmt(ctl, hi[ctl])}; the other was at ${fmt(ctl, lo[ctl])}.`, { play: firstHigh ? two(hi, lo, p.seq) : two(lo, hi, p.seq), sub: 'You will hear two sounds.' });
   } });
 
 def({ id: 'S2', name: 'Name the sound', blurb: 'Hear one sound and say which setting made it.', target: 6000, defaults: { opts: [['Sine', { o1w: 0 }], ['Triangle', { o1w: 1 }], ['Saw', { o1w: 2 }], ['Square', { o1w: 3 }]], base: {}, seq: 'hold', q: 'Which waveform is this?' },
@@ -75,8 +87,8 @@ def({ id: 'S4', name: 'Direction and amount', blurb: 'One control moves. Say whi
   } });
 
 /** Pick a target and a clearly different starting point for one control. */
-function aim(r: Rng, id: string, lo: number, hi: number, base: Patch): [number, number] {
-  if (isChoice(id)) { const n = PD[id].max + 1, t = rint(r, 0, n - 1); return [t, (t + 1 + rint(r, 0, n - 2)) % n]; }
+function aim(r: Rng, id: string, lo: number, hi: number, base: Patch, top?: number): [number, number] {
+  if (isChoice(id)) { const n = (top ?? PD[id].max) + 1, t = rint(r, 0, n - 1); return [t, (t + 1 + rint(r, 0, n - 2)) % n]; }
   const span = hi - lo, fromTop = r() < 0.5, t = fromTop ? rnd(r, lo, lo + span * 0.62) : rnd(r, lo + span * 0.38, hi), s = fromTop ? hi : lo;
   const tv = denorm(id, t); let sv = denorm(id, s);
   if (isStepped(id) && sv === tv) sv = tv === PD[id].max ? tv - 1 : tv + 1;
@@ -84,8 +96,8 @@ function aim(r: Rng, id: string, lo: number, hi: number, base: Patch): [number, 
 }
 function matchQ(p: any, r: Rng, ctls: string[], prompt: string): Question {
   const target = mkPatch(p.base), start = mkPatch(p.base), rg = p.ranges ?? {};
-  for (const id of ctls) { const [lo, hi] = rg[id] ?? [p.lo ?? 0.2, p.hi ?? 0.85], [t, s] = aim(r, id, lo, hi, target); target[id] = t; start[id] = s; }
-  return { prompt, sub: 'Listen to the target, then to yours. Adjust until they sound the same.', answer: { kind: 'match', target, start, ctls, seq: p.seq ?? 'hold', view: p.view ?? 'spectrum', showTarget: p.show ?? false, tolK: p.tolK ?? 1 }, item: ctls.join('+'), explain: 'The target was ' + ctls.map((id) => `${name(id, ctls).toLowerCase()} ${fmt(id, target[id])}`).join(', ') + '.' };
+  for (const id of ctls) { const [lo, hi] = rg[id] ?? [p.lo ?? 0.2, p.hi ?? 0.85], [t, s] = aim(r, id, lo, hi, target, p.limit?.[id]); target[id] = t; start[id] = s; }
+  return { prompt, sub: 'Listen to the target, then to yours. Adjust until they sound the same.', answer: { kind: 'match', target, start, ctls, seq: p.seq ?? 'hold', view: p.view ?? 'spectrum', showTarget: p.show ?? false, tolK: p.tolK ?? 1, limit: p.limit }, item: ctls.join('+'), explain: 'The target was ' + ctls.map((id) => `${name(id, ctls).toLowerCase()} ${fmt(id, target[id])}`).join(', ') + '.' };
 }
 def({ id: 'S5', name: 'One-knob match', blurb: 'Move a single control until your sound matches the target.', target: 0, defaults: { ctl: ['cut'], base: {}, lo: 0.25, hi: 0.9, seq: 'hold', view: 'spectrum', show: true, tolK: 1 },
   gen: (p, r) => { const ctl = pick(r, list(p.ctl)); return matchQ(p, r, [ctl], `Match the target with the ${PD[ctl].label.toLowerCase()}.`); } });
@@ -100,15 +112,15 @@ def({ id: 'S7', name: 'Patch from scratch', blurb: 'Rebuild a complete sound sta
 def({ id: 'S8', name: 'Read the picture', blurb: 'Pair a sound with its waveform, spectrum or envelope picture.', target: 8000, defaults: { opts: [['Sine', { o1w: 0 }], ['Triangle', { o1w: 1 }], ['Saw', { o1w: 2 }], ['Square', { o1w: 3 }]], base: {}, view: 'wave', seq: 'hold', mode: 'both' },
   gen: (p, r) => {
     const opts = p.opts as [string, Patch][], o = pick(r, opts), byName = p.mode === 'name' || (p.mode === 'both' && r() < 0.5), mk = (x: Patch) => mkPatch({ ...p.base, ...x });
-    if (byName) return slots(`Which sound makes this ${p.view === 'wave' ? 'waveform' : p.view === 'env' ? 'loudness shape' : 'spectrum'}?`, [{ label: 'Answer', choices: opts.map((x) => x[0]), value: o[0] }], 'n' + o[0], `That picture is ${o[0].toLowerCase()}.`, { viz: { kind: p.view, patch: mk(o[1]), seq: p.seq } });
+    if (byName) return slots(`Which sound makes this ${p.view === 'wave' ? 'waveform' : p.view === 'env' ? 'loudness shape' : 'spectrum'}?`, [{ label: 'Answer', choices: opts.map((x) => x[0]), value: o[0] }], o[0], `That picture is ${o[0].toLowerCase()}.`, { viz: { kind: p.view, patch: mk(o[1]), seq: p.seq } });
     const sh = shuffle(r, opts.slice()), letters = sh.map((_, i) => 'ABCD'[i]);
-    return slots('Which picture shows the sound you hear?', [{ label: 'Picture', choices: letters, value: letters[sh.indexOf(o)], viz: sh.map((x) => ({ kind: p.view, patch: mk(x[1]), seq: p.seq })) }], 'p' + o[0], `The sound was ${o[0].toLowerCase()}.`, { play: one(mk(o[1]), p.seq) });
+    return slots('Which picture shows the sound you hear?', [{ label: 'Picture', choices: letters, value: letters[sh.indexOf(o)], viz: sh.map((x) => ({ kind: p.view, patch: mk(x[1]), seq: p.seq })) }], o[0], `The sound was ${o[0].toLowerCase()}.`, { play: one(mk(o[1]), p.seq) });
   } });
 
-const bankQ = (rows: string[][], r: Rng, tag: string): Question => { const q = pick(r, rows); return slots(q[0], [{ label: 'Answer', choices: shuffle(r, q.slice(1)), value: q[1] }], tag + q[0].slice(0, 24), `${q[1]}.`); };
+const bankQ = (rows: string[][], r: Rng, tag: string): Question => { const q = pick(r, rows); return slots(q[0], [{ label: 'Answer', choices: shuffle(r, q.slice(1)), value: q[1] }], tag + q[0], `${q[1]}.`); };
 def({ id: 'S9', name: 'Signal flow', blurb: 'Put the parts of a synth in order, or work out why a patch is silent.', target: 12000, defaults: { set: 'basic' }, gen: (p, r) => bankQ(FLOW[p.set] ?? FLOW.basic, r, 'f') });
 
-def({ id: 'S10', name: 'Draw the envelope', blurb: 'Shape attack, decay, sustain and release until your note has the same loudness shape as the target.', target: 0, defaults: { base: { cut: 3000 }, ctls: ['aa', 'ad', 'as', 'ar'], ranges: { aa: [0.1, 0.62], ad: [0.3, 0.68], as: [0.15, 0.7], ar: [0.3, 0.75], fa: [0.1, 0.62], fd: [0.3, 0.7], fs: [0.1, 0.7], fr: [0.3, 0.75] }, seq: 'gate', tolK: 1.6 },
+def({ id: 'S10', name: 'Draw the envelope', blurb: 'Shape attack, decay, sustain and release until your note has the same loudness shape as the target.', target: 0, defaults: { base: { cut: 3000 }, ctls: ['aa', 'ad', 'as', 'ar'], ranges: { aa: [0.35, 0.72], ad: [0.3, 0.68], as: [0.15, 0.7], ar: [0.3, 0.75], fa: [0.35, 0.72], fd: [0.3, 0.7], fs: [0.1, 0.7], fr: [0.3, 0.75] }, seq: 'gate', tolK: 1.6 },
   gen: (p, r) => ({ ...matchQ({ ...p, view: 'env', show: false }, r, p.ctls, 'Draw the envelope you hear.'), sub: 'The picture shows the loudness of your own note over time.' }) });
 
 const DEST: Record<string, [string, Patch]> = { l1p: ['Pitch (vibrato)', { l1p: 0.8 }], l1f: ['Cutoff (filter wobble)', { l1f: 2, cut: 700, res: 0.3 }], l1a: ['Volume (tremolo)', { l1a: 0.85 }], l1w: ['Pulse width', { l1w: 0.38, o1w: 3, pw: 0.5 }] };
@@ -125,10 +137,18 @@ def({ id: 'S11', name: 'Find the modulation', blurb: 'An LFO is moving something
 def({ id: 'S12', name: 'Recipe', blurb: 'Build a named kind of sound from a short brief. Any patch that fits the brief passes.', target: 0, defaults: { recipe: 'sub' },
   gen: (p) => {
     const rc = RECIPES[p.recipe] ?? RECIPES.sub, checks: MatchCheck[] = rc.checks.map((c) => ({ say: c.say, test: (x: Patch) => c.test(x, features(mkPatch(x), rc.note)) }));
-    return { prompt: `Build ${rc.name}.`, sub: rc.brief, answer: { kind: 'match', target: mkPatch({ ...rc.base, ...rc.ref }), start: mkPatch(rc.base), ctls: rc.ctls, seq: rc.seq, view: 'none', showTarget: false, tolK: 1, checks, example: true }, item: p.recipe, explain: 'One patch that fits: ' + Object.keys(rc.ref).map((id) => `${PD[id].label.toLowerCase()} ${fmt(id, rc.ref[id])}`).join(', ') + '.' };
+    return { prompt: `Build ${rc.name}.`, sub: rc.brief, answer: { kind: 'match', target: mkPatch({ ...rc.base, ...rc.ref }), start: mkPatch(rc.base), ctls: rc.ctls, seq: rc.seq, view: 'none', showTarget: false, tolK: 1, checks, example: true, limit: rc.limit }, item: p.recipe, explain: 'One patch that fits: ' + Object.keys(rc.ref).map((id) => `${PD[id].label.toLowerCase()} ${fmt(id, rc.ref[id])}`).join(', ') + '.' };
   } });
 
-def({ id: 'S13', name: 'Quick-fire concepts', blurb: 'Fast checks on what each part of a synth does.', target: 7000, defaults: { topic: 'sound' }, gen: (p, r) => bankQ(QUIZ[p.topic] ?? QUIZ.sound, r, 'q') });
+/** Facts are tagged with the lesson that teaches them. A lesson's questions only use facts taught up to that lesson. */
+const lessonNo = (id: string) => { const m = /(\d+)\.(\d+)/.exec(id); return m ? +m[1] * 100 + +m[2] : 0; };
+export function quizRows(topic: string | string[], at?: string): string[][] {
+  const out: string[][] = [];
+  for (const t of Array.isArray(topic) ? topic : [topic]) { const rows = QUIZ[t] ?? [], tags = QUIZ_AT[t] ?? []; rows.forEach((row, i) => { if (!at || lessonNo(tags[i] ?? '0.0') <= lessonNo(at)) out.push(row); }); }
+  return out;
+}
+def({ id: 'S13', name: 'Quick-fire concepts', blurb: 'Fast checks on what each part of a synth does.', target: 7000, defaults: { topic: 'sound' },
+  gen: (p, r) => { const rows = quizRows(p.topic, p.at); if (rows.length) return bankQ(rows, r, 'q'); return { ...bankQ(QUIZ.sound.slice(0, 1), r, 'q'), item: '!none' }; } });
 /** What each control does, for the question "turn the … up". */
 const OURS: Record<string, string> = { o1oct: 'oscillator octave', o2det: 'oscillator 2 detune', nlvl: 'noise level', pw: 'pulse width', sublvl: 'sub oscillator level', cut: 'filter cutoff', res: 'resonance', fenv: 'filter envelope amount', fd: 'filter envelope decay', ktrk: 'filter key tracking', aa: 'amp attack', ad: 'amp decay', as: 'amp sustain', ar: 'amp release', glide: 'glide', l1r: 'LFO rate', l1p: 'vibrato depth (LFO to pitch)', l1f: 'LFO to cutoff', l1fade: 'LFO fade-in', cho: 'chorus', dist: 'distortion', dly: 'delay mix', dfb: 'delay feedback', rev: 'reverb mix', uspread: 'unison spread' };
 def({ id: 'S14', name: 'Translate', blurb: 'Another synth, another panel, other names. Find the control you know and turn it.', target: 15000, defaults: { set: 'basic' },

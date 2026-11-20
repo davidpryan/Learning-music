@@ -277,7 +277,7 @@ export class Engine {
     }
     // effects
     const dFirst = p.fxo < 0.5, dg = 1 + p.dist * 24, dn = 1 / (1 + p.dist * 1.5), dT = Math.min(this.dl.length - 2, Math.floor(p.dtime * sr));
-    const gLo = Math.pow(10, p.eqlo / 20), gHi = Math.pow(10, p.eqhi / 20), cLo = 1 - Math.exp((-TAU * 220) / sr), cHi = 1 - Math.exp((-TAU * 3000) / sr);
+    const gLo = Math.pow(10, p.eqlo / 20), gHi = Math.pow(10, p.eqhi / 20), cLo = 1 - Math.exp((-TAU * 400) / sr), cHi = 1 - Math.exp((-TAU * 3000) / sr);
     const thr = 0.5 - p.comp * 0.42, ratio = 1 + p.comp * 9, makeup = 1 + p.comp * 1.8, rfb = 0.72 + p.rsize * 0.25, sc = sr / 44100;
     for (let i = 0; i < len; i++) {
       let x = L[off + i];

@@ -13,6 +13,6 @@ function later<K extends keyof Pack>(name: K): Pack[K] {
   const C = lazy(() => loadSynth().then((m) => ({ default: m[name] as ComponentType<any> })));
   return ((props: any) => <Suspense fallback={<div className="small muted" role="status">Loading…</div>}><C {...props} /></Suspense>) as any;
 }
-export const MatchArea = later('MatchArea'), VizView = later('VizView'), PatternArea = later('PatternArea'), PanelArea = later('PanelArea'), PanelFig = later('PanelFig'), PatchFig = later('PatchFig');
+export const MatchArea = later('MatchArea'), VizView = later('VizView'), PatternArea = later('PatternArea'), PanelArea = later('PanelArea'), PanelFig = later('PanelFig'), PatchFig = later('PatchFig'), SoundsFig = later('SoundsFig');
 export const Sandbox = later('Sandbox'), SynthPlay = later('SynthPlay'), SynthGame = later('SynthGame'), SynthPlacement = later('SynthPlacement');
 export const SYNTH_GAME_NAME: Record<string, string> = { 's-name': 'Name That Sound', 's-rush': 'Knob Rush', 's-golf': 'Patch Golf' };

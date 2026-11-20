@@ -8,6 +8,6 @@ import { registerLessons } from './sched';
 const lessons = [...SYNTH_A, ...SYNTH_B];
 addLessons(lessons); registerLessons(lessons);
 
-export { MatchArea, VizView, PatternArea, PanelArea, PanelFig, PatchFig } from './synth/ui';
+export { MatchArea, VizView, PatternArea, PanelArea, PanelFig, PatchFig, SoundsFig } from './synth/ui';
 export { Sandbox } from './screens/Sandbox';
 export { SynthPlay, SynthGame, SynthPlacement } from './synth/screens';

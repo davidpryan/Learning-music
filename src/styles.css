@@ -218,3 +218,5 @@ table.simple { width: 100%; border-collapse: collapse; font-size: 14px; } table.
 .tb-menu-row:last-child { border-bottom: 0; }
 .tb-menu-row b { min-width: 34px; text-align: right; }
 .tb-menu-row .tb-chip { min-width: 46px; padding: 0; font-size: 20px; }
+
+.tb-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
