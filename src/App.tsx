@@ -12,6 +12,7 @@ import { Practice } from './screens/Practice';
 import { Play } from './screens/Play';
 import { Progress } from './screens/Progress';
 import { Tools } from './screens/Tools';
+import { CheatSheets, FlashCards } from './screens/Reference';
 import { Settings } from './screens/Settings';
 import { Onboarding } from './screens/Onboarding';
 import { Run, Session, Timed } from './screens/Run';
@@ -81,11 +82,12 @@ export default function App() {
   };
   if (!ready) return <div className="main center muted" style={{ paddingTop: 80 }}>Loading…</div>;
   if (!s.profile.onboarded) return <div className="app"><div className="shell"><Onboarding /></div></div>;
-  const showTabs = isTab(top.n) || top.n === 'tools' || top.n === 'settings';
+  const showTabs = isTab(top.n) || top.n === 'tools' || top.n === 'settings' || top.n === 'sheets';
   // Every screen on the stack stays mounted (hidden) so going back returns to exactly where you were.
   const render = (r: Route): JSX.Element => {
     switch (r.n) {
       case 'learn': return <Learn />; case 'practice': return <Practice />; case 'play': return <Play />; case 'progress': return <Progress />;
+      case 'sheets': return <CheatSheets />; case 'cards': return <FlashCards />;
       case 'tools': return <Tools />; case 'settings': return <Settings />; case 'session': return <Session />;
       case 'lesson': return <LessonView id={r.id} onExit={nav.back} />;
       case 'run': return <Run r={r} />;
@@ -100,7 +102,7 @@ export default function App() {
     <Nav.Provider value={nav}>
       <div className="app">
         {showTabs && <nav className="tabbar" aria-label="Main">{TABS.map(([n, l, ic]) => <button key={n} aria-current={top.n === n ? 'page' : undefined} onClick={() => nav.go({ n } as Route)}><Icon name={ic} />{l}</button>)}</nav>}
-        {stack.map((e, i) => <div className="shell" data-sec={e.r.n} key={e.k} hidden={i !== stack.length - 1}>{render(e.r)}</div>)}
+        {stack.map((e, i) => <div className="shell" data-sec={e.r.n === 'sheets' || e.r.n === 'cards' ? 'practice' : e.r.n} key={e.k} hidden={i !== stack.length - 1}>{render(e.r)}</div>)}
         {toast && <div className="toast" role="status">{toast}</div>}
       </div>
     </Nav.Provider>

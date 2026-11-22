@@ -67,6 +67,21 @@ const ear = await pg.evaluate(async () => {
 check('pressing "Play the sound" does not move the keyboard', ear.sound[0] === ear.sound[1], JSON.stringify(ear.sound));
 check('a hint does not move the keyboard', ear.hint[0] === ear.hint[1], JSON.stringify(ear.hint));
 check('answering does not move the keyboard (feedback and the answer appear below it)', ear.answered[0] === ear.answered[1] && ear.chord[0] === ear.chord[1] && ear.chord[2], JSON.stringify([ear.answered, ear.chord]));
+// flash cards: turning a card over must not move the buttons
+const fc = await pg.evaluate(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const root = () => document.querySelector('.shell:not([hidden])'); const btn = (t) => [...root().querySelectorAll('button')].find((b) => b.textContent.includes(t));
+  root().querySelector('.topbar .iconbtn')?.click(); await wait(450);
+  [...document.querySelectorAll('.tabbar button')].find((b) => b.textContent.includes('Practice')).click(); await wait(250); btn('Flash cards').click(); await wait(300);
+  const out = [];
+  for (const d of ['Note and rest lengths', 'Keys on the keyboard', 'Treble clef notes', 'Key signatures', 'Major scales', 'Intervals', 'Chord types', 'Major and minor triads']) {
+    [...root().querySelectorAll('.node')].find((b) => b.textContent.includes(d)).click(); await wait(350);
+    for (let i = 0; i < 3; i++) { const a = Math.round(btn('Show answer').getBoundingClientRect().top); btn('Show answer').click(); await wait(250); const b = Math.round(btn('Got it').getBoundingClientRect().top); out.push([d, a, b]); btn(i === 1 ? 'Again' : 'Got it').click(); await wait(250); }
+    root().querySelector('.topbar .iconbtn').click(); await wait(300);
+  }
+  const st = await import('/src/store.ts'); return { out, saved: Object.keys(st.get().cards).length };
+});
+check('flash cards: buttons stay put when a card is turned over', fc.out.every((x) => x[1] === x[2]), JSON.stringify(fc.out.filter((x) => x[1] !== x[2])));
+check('flash cards: answers are saved', fc.saved >= 16, String(fc.saved));
 check('no console or page errors', errors.length === 0, errors.slice(0, 5).join(' | '));
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join('; ')}` : '\nALL PASSED');
 await browser.close(); process.exit(fails.length ? 1 : 0);

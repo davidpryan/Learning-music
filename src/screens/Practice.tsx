@@ -45,6 +45,13 @@ export function Practice() {
     <>
       <TopBar title="Practice" sub={synth ? '14 synth exercises, free practice' : 'All 27 exercises, fully adjustable'} />
       <main className="main col">
+        <section>
+          <div className="level-h">Reference</div>
+          <div className="grid2">
+            <button className="card tap" onClick={() => nav.go({ n: 'sheets' })}><Icon name="list" /><span className="grow"><b>Cheat sheets</b><br /><span className="small muted">Look it up</span></span></button>
+            <button className="card tap" onClick={() => nav.go({ n: 'cards' })}><Icon name="star" /><span className="grow"><b>Flash cards</b><br /><span className="small muted">Memorise it</span></span></button>
+          </div>
+        </section>
         {TRACKS.map((t) => (
           <section key={t}>
             <div className="level-h">{t === 'theory' ? 'Theory and recognition' : TRACK_NAME[t]}</div>

@@ -27,6 +27,8 @@ export interface State {
   presets: Record<string, { name: string; params: any }[]>;
   keyQuest: string[]; tempo: Record<string, { bpm: number; pass: number; fail: number }>;
   counters: Record<string, number>; synthPatches: { name: string; patch: Record<string, number> }[]; userPieces: { id: string; title: string; xml: string }[]; dailyLog: { d: string; game: string; score: number }[];
+  /** Flash cards: how many times running each card was known (0 to 3), keyed deck:card. */
+  cards: Record<string, number>;
 }
 export const SCHEMA = 1;
 export const defaults = (): State => ({
@@ -35,7 +37,7 @@ export const defaults = (): State => ({
     xp: 0, mode: 'music', dailyGoalMin: 10, synthGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
     settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false, sfx: true },
   },
-  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [],
+  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [], cards: {},
 });
 
 let state: State = defaults();

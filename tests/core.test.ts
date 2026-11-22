@@ -198,3 +198,18 @@ describe('games are suggested only for learned skills', () => {
     store.resetAll();
   });
 });
+
+describe('flash cards', () => {
+  it('decks are well formed, and card progress is saved alongside existing progress', async () => {
+    const ref = await import('../src/screens/Reference'); const store = await import('../src/store');
+    expect(ref.DECKS.length).toBeGreaterThanOrEqual(8);
+    for (const d of ref.DECKS) { expect(d.cards.length).toBeGreaterThan(6); expect(new Set(d.cards.map((c: any) => c.id)).size).toBe(d.cards.length); for (const c of d.cards) expect(c.back.text).toBeTruthy(); }
+    // a save from before flash cards existed loads with an empty card record and everything else intact
+    store.resetAll(); const old = JSON.parse(store.exportJson()); delete old.cards; old.profile.xp = 99; old.lessons['T.1'] = { passedAt: 1, best: 1 };
+    store.importJson(JSON.stringify(old));
+    expect(store.get().cards).toEqual({}); expect(store.get().profile.xp).toBe(99); expect(store.get().lessons['T.1']).toBeTruthy();
+    store.set((s: any) => { s.cards['keys:60'] = 2; });
+    expect(ref.deckKnown(JSON.parse(store.exportJson()), ref.DECKS.find((d: any) => d.id === 'keys')!)).toBe(1);
+    store.resetAll();
+  });
+});
