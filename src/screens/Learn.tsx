@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LESSONS, modeTracks, TRACK_NAME, LEVEL_NAME, Track, Lesson } from '../content';
 import { useNav } from '../nav';
 import { useS } from '../store';
@@ -6,11 +6,17 @@ import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW
 import { Icon, Sheet, TopBar, Bar } from '../ui/common';
 
 const ICON: Record<string, string> = { locked: 'lock', available: 'playtri', passed: 'check', mastered: 'star' };
+/** True on wide screens, and kept up to date when the window changes size (rotating, or unfolding an iPhone Duo). */
+function useWide() {
+  const q = '(min-width: 900px)'; const [w, setW] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(q).matches);
+  useEffect(() => { if (typeof matchMedia === 'undefined') return; const m = matchMedia(q), h = () => setW(m.matches); h(); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
+  return w;
+}
 export function Learn() {
   const s = useS(), nav = useNav();
   const TRACKS = modeTracks(s.profile.mode), synth = s.profile.mode === 'synth';
   const [picked, setTrack] = useState<Track>('theory'), [open, setOpen] = useState<Lesson | null>(null), track = TRACKS.includes(picked) ? picked : TRACKS[0];
-  const wide = typeof window !== 'undefined' && window.innerWidth >= 900;
+  const wide = useWide();
   const column = (t: Track) => {
     const ls = LESSONS.filter((l) => l.track === t), levels = [...new Set(ls.map((l) => l.level))], stt = trackStats(s, t);
     return (

@@ -135,6 +135,9 @@ function StaffRunner({ daily, seed, onExit }: GP) {
     if (tier == null || state !== 'run') return;
     const g = G.current; g.notes = []; g.score = 0; g.lives = 3; g.on = true; g.w = field.current?.clientWidth ?? 340; g.last = performance.now();
     if (bg.current) drawStave(bg.current, T.clef, g.w, 170);
+    // keep the playing field matched to the screen if it changes size mid-game (rotation, folding or unfolding)
+    const ro = typeof ResizeObserver !== 'undefined' && field.current ? new ResizeObserver(() => { const w = field.current?.clientWidth ?? g.w; if (w === g.w) return; g.w = w; if (bg.current) { bg.current.innerHTML = ''; drawStave(bg.current, T.clef, w, 170); } }) : null;
+    if (ro && field.current) ro.observe(field.current);
     const skill = skillFor('T1'), slow = st.reducedMotion ? 0.6 : 1, rnd = daily && seed != null ? mulberry(seed) : Math.random;
     const item = (p: Pitch) => `${T.clef}:${pname(p, true)}`;
     const spawn = () => { let p = fromDi(T.lo + Math.floor(rnd() * (T.hi - T.lo + 1))); const lastP = g.notes[g.notes.length - 1]?.p; if (lastP && di(lastP) === di(p)) p = fromDi(di(p) === T.hi ? di(p) - 1 : di(p) + 1); if (T.acc && rnd() < 0.3) { p.a = rnd() < 0.5 ? 1 : -1; if ((p.l === 2 || p.l === 6) && p.a === 1) p.a = 0; if ((p.l === 0 || p.l === 3) && p.a === -1) p.a = 0; } g.notes.push({ id: g.id++, p, x: g.w + 10, born: performance.now() }); };
@@ -155,7 +158,7 @@ function StaffRunner({ daily, seed, onExit }: GP) {
       if (good) { g.notes.shift(); g.score++; record({ skillId: skill, ex: 'T1', ctx: 'game', correct: true, ms: performance.now() - n.born, input: e.source, item: item(n.p) }); setFlash('hit'); } else setFlash('bad');
       setTimeout(() => setFlash(''), 180);
     });
-    return () => { g.on = false; cancelAnimationFrame(g.raf); un(); };
+    return () => { g.on = false; cancelAnimationFrame(g.raf); un(); ro?.disconnect(); };
   }, [tier, state, round]);
   if (tier == null) return <Tiers title="Staff Runner" blurb="Notes scroll toward the line. Play each one before it gets there. Speed rises every 10 notes; you have 3 lives. Stars at 20, 50 and 100 notes." desc={['Treble staff', 'Bass staff', 'Treble with ledger lines, sharps and flats']} onPick={(t) => { setState('run'); setRound(round + 1); setTier(t); }} onExit={onExit} best={(t) => 'Best ' + (s.bests['runner:' + t] ?? 0)} stars={(t) => s.stars['runner:' + t] ?? 0} />;
   const g = G.current, mode = st.input, exit = daily ? onExit : () => setTier(null);

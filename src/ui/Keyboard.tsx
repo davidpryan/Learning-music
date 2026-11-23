@@ -48,7 +48,7 @@ export function Keyboard({ lo = 60, hi = 84, marks, selected, labels, silent, sh
   const n = whites.length;
   return (
     <div className="kb-wrap" ref={wrap}>
-      <div className={'kb' + (short ? ' short' : '')} style={{ minWidth: cfg.bigKeys ? n * 44 : n <= 17 ? n * 20 : n * 32 }} role="group" aria-label="Piano keyboard">
+      <div className={'kb' + (short ? ' short' : '')} style={{ minWidth: cfg.bigKeys ? n * 44 : n <= 17 ? n * 20 : n * 32, maxWidth: n * 76 /* on wide screens (a tablet, an unfolded iPhone Duo) keys stay finger-sized */ }} role="group" aria-label="Piano keyboard">
         {whites.map((m) => (
           <button key={m} type="button" className={cls(m, 'wk')} aria-label={label(fromMidi(m), true)} tabIndex={display ? -1 : 0}
             onPointerDown={(e) => { e.preventDefault(); press(m); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(m); } }}>

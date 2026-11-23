@@ -54,11 +54,11 @@ p { margin: 0 0 10px; }
 .tabbar button { flex: 1; max-width: 150px; min-height: 54px; border: 0; border-radius: var(--radius-md); background: none; color: #FFF6E0; font-size: 12.5px; font-weight: 600; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
 .tabbar button[aria-current='page'] { background: var(--cap); color: var(--cap-ink); font-weight: 700; }
 @media (min-width: 900px) {
-  .app { flex-direction: row; } .tabbar { position: sticky; top: 0; height: 100vh; width: 96px; flex-direction: column; justify-content: flex-start; padding: 12px 6px; }
+  .app { flex-direction: row; } .tabbar { position: sticky; top: 0; height: 100vh; height: 100dvh; width: 96px; flex-direction: column; justify-content: flex-start; padding: 12px 6px; }
   .tabbar button { flex: 0 0 auto; width: 100%; max-width: none; min-height: 64px; }
   .shell { flex: 1; min-width: 0; } .main { margin-bottom: 28px; }
 }
-.shell { display: flex; flex-direction: column; min-height: 100vh; flex: 1; }
+.shell { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; flex: 1; }
 .app:not(:has(.tabbar)) .main { margin-bottom: 12px; }
 .shell[hidden] { display: none; }
 
@@ -108,7 +108,7 @@ input[type='range'] { width: 100%; accent-color: var(--ink); min-height: 44px; }
 
 /* keyboard */
 .kb-wrap { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 6px; touch-action: pan-x; }
-.kb { position: relative; display: flex; gap: 3px; height: 168px; user-select: none; -webkit-user-select: none; touch-action: pan-x; }
+.kb { margin: 0 auto; position: relative; display: flex; gap: 3px; height: 168px; user-select: none; -webkit-user-select: none; touch-action: pan-x; }
 .kb.short { height: 104px; }
 .kb .wk { flex: 1 1 0; min-width: 0; border: 2px solid var(--rule); border-radius: 0 0 8px 8px; background: #ffffff; color: var(--soft); font-size: 12px; font-weight: 700; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 8px; }
 .kb .bk { position: absolute; top: 0; min-width: 0; padding-left: 0; padding-right: 0; height: 60%; border: 0; border-radius: 0 0 6px 6px; background: #2B2D42; color: #FFF6E0; font-size: 10px; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 6px; z-index: 2; }
@@ -133,14 +133,37 @@ input[type='range'] { width: 100%; accent-color: var(--ink); min-height: 44px; }
 .tappad:active, .tappad.hit { transform: translateY(4px); box-shadow: 0 4px 0 var(--hue-deep); }
 .tappad:disabled { background: var(--sand); color: var(--ink); box-shadow: none; }
 .node.later { color: var(--soft); }
-.perf-score { max-height: max(150px, calc(100dvh - 560px)); overflow-y: auto; overscroll-behavior: contain; }
-.perf-score.tall { max-height: max(240px, calc(100dvh - 560px)); }
+.perf-score { flex-shrink: 0; max-height: max(150px, calc(100dvh - 636px)); overflow-y: auto; overscroll-behavior: contain; }
+.perf-score.tall { max-height: max(240px, calc(100dvh - 636px)); }
+/* Short screens: a phone in Safari with its toolbars showing, the iPhone Duo cover display (466 x 678 points) and its
+   unfolded inner display on its side (951 x 669). The status area becomes one row and the keys a little shorter, so
+   the score, the Start button and the keyboard are all on screen together without scrolling. */
+@media (max-height: 720px) {
+  .perf-score { max-height: max(140px, calc(100dvh - 520px)); } .perf-score.tall { max-height: max(220px, calc(100dvh - 520px)); }
+  .main:has(.dock) .prompt + .muted.small { display: none; }
+  .dock .perf-status { height: 48px; flex-direction: row; align-items: center; }
+  .dock .perf-status > .row { flex: 1 1 auto; min-width: 0; } .dock .perf-status > .row:has(+ .btn.big) { flex: 0 0 auto; } .dock .perf-status > .btn.big { flex: 1 1 auto; min-height: 44px; padding: 6px 12px; white-space: nowrap; }
+  .dock .perf-status .muted.small { white-space: nowrap; }
+  .dock .perf-status > .count, .dock .perf-status > .center { flex: 1; }
+  .dock .perf-status .count { font-size: 38px; line-height: 1; }
+  .dock .kb { height: 144px; } .dock .tappad { min-height: 130px; }
+}
+@media (max-height: 720px) and (max-width: 700px) { .dock .perf-status .row .muted.small { display: none; } }
+/* Shorter still (the Duo's cover display inside Safari is about 580 points tall): trim the chrome around an
+   at-tempo exercise so the score is never hidden behind the keyboard. */
+@media (max-height: 620px) {
+  .dock .kb { height: 116px; } .dock .tappad { min-height: 104px; }
+  .shell:has(.dock) .topbar .status { display: none; }
+  .main:has(.dock) { margin-top: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .main:has(.dock) .col { gap: 8px; }
+  .perf-score { max-height: max(140px, calc(100dvh - 424px)); } .perf-score.tall { max-height: max(200px, calc(100dvh - 424px)); }
+}
 @media (max-height: 500px) {
-  .perf-score { max-height: max(130px, calc(100dvh - 250px)); } .perf-score.tall { max-height: max(200px, calc(100dvh - 250px)); }
-  .dock .perf-status { height: 44px; flex-direction: row; align-items: center; }
-  .dock .perf-status > * { flex: 1; } .dock .perf-status .btn.big { padding-top: 8px; padding-bottom: 8px; }
-  .dock .perf-status .count { font-size: 36px; }
-  .dock .kb { height: 124px; } .dock .tappad { min-height: 110px; }
+  /* a phone on its side: only the score, the controls and the keys */
+  .main:has(.dock) .prompt, .main:has(.dock) .seg { display: none; }
+  .perf-score { max-height: max(130px, calc(100dvh - 306px)); } .perf-score.tall { max-height: max(190px, calc(100dvh - 306px)); }
+  .dock .perf-status { height: 44px; }
+  .dock .kb { height: 104px; } .dock .tappad { min-height: 100px; }
 }
 .perf-status { height: 116px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
 .perf-status .count { font-size: 56px; }
@@ -224,6 +247,7 @@ table.simple { width: 100%; border-collapse: collapse; font-size: 14px; } table.
 .sheet-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line2); }
 .sheet-fig { flex: 0 0 46%; max-width: 230px; pointer-events: none; }
 .sheet-row.stack { flex-direction: column; align-items: stretch; } .sheet-row.stack .sheet-fig { flex: none; max-width: 420px; }
-.flashcard { border: 2px solid var(--line2); border-radius: 16px; padding: 16px; min-height: 400px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.flashcard { border: 2px solid var(--line2); border-radius: 16px; padding: 16px; min-height: clamp(280px, calc(100dvh - 310px), 430px); display: flex; flex-direction: column; gap: 10px; text-align: center; }
+@media (max-height: 720px) { .flashcard { padding: 10px 16px; gap: 6px; } .flashcard .fc-text { font-size: 19px; } .flashcard .kb.short { height: 84px; } }
 .flashcard hr { border: 0; border-top: 1px dashed var(--line2); width: 100%; margin: 2px 0; }
 .fc-text { font-size: 22px; font-weight: 700; line-height: 1.25; } .fc-score { max-width: 260px; width: 100%; margin: 0 auto; }
