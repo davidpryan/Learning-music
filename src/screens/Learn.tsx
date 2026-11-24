@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { LESSONS, modeTracks, TRACK_NAME, LEVEL_NAME, Track, Lesson } from '../content';
 import { useNav } from '../nav';
 import { useS } from '../store';
-import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW_EX, skipList, skipAhead } from '../sched';
+import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW_EX, skipList, skipAhead, sectionList, skipLessons } from '../sched';
 import { Icon, Sheet, TopBar, Bar } from '../ui/common';
 
 const ICON: Record<string, string> = { locked: 'lock', available: 'playtri', passed: 'check', mastered: 'star' };
@@ -17,7 +17,7 @@ export function Learn() {
   const TRACKS = modeTracks(s.profile.mode), synth = s.profile.mode === 'synth';
   const [picked, setTrack] = useState<Track>('theory'), [open, setOpen] = useState<Lesson | null>(null), track = TRACKS.includes(picked) ? picked : TRACKS[0];
   const wide = useWide();
-  const [skip, setSkip] = useState<Track | null>(null), [to, setTo] = useState<number | null>(null);
+  const [skip, setSkip] = useState<Track | null>(null), [to, setTo] = useState<number | null>(null), [sec, setSec] = useState<{ t: Track; lv: number } | null>(null);
   const column = (t: Track) => {
     const ls = LESSONS.filter((l) => l.track === t), levels = [...new Set(ls.map((l) => l.level))], stt = trackStats(s, t);
     return (
@@ -28,7 +28,7 @@ export function Learn() {
         {t !== 'synth' && levels.some((lv) => skipList(s, t, lv).length > 0) && <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { setSkip(t); setTo(null); }}>Skip ahead…</button>}
         {levels.map((lv) => (
           <div key={lv}>
-            <div className="level-h">{t === 'synth' ? 'Unit' : 'Level'} {lv} · {LEVEL_NAME[t][lv]}</div>
+            <div className="level-h row between"><span>{t === 'synth' ? 'Unit' : 'Level'} {lv} · {LEVEL_NAME[t][lv]}</span>{sectionList(s, t, lv).length > 0 && <button className="btn sm ghost" aria-label={`Skip ${t === 'synth' ? 'unit' : 'level'} ${lv}, ${LEVEL_NAME[t][lv]}`} onClick={() => setSec({ t, lv })}>Skip</button>}</div>
             {ls.filter((l) => l.level === lv).map((l) => {
               const stx = lessonStatus(s, l);
               return <button key={l.id} className={'node ' + stx} onClick={() => setOpen(l)} aria-label={`${l.title}, ${stx}`}><span className="ico"><Icon name={ICON[stx]} size={14} /></span><span className="grow"><span className="small muted">{l.id}</span> {l.title}</span>{(() => { const sk = skillsOf(l.id); if (stx === 'locked' || stx === 'available' || !sk.length) return null; const ok = sk.filter((k) => ['practiced', 'mastered'].includes(s.skills[k.id]?.status ?? '')).length; return <span className={'chip' + (ok === sk.length ? ' ok' : '')} aria-label={`${ok} of ${sk.length} skills practiced`}>{ok}/{sk.length}</span>; })()}</button>;
@@ -54,6 +54,7 @@ export function Learn() {
             {ost === 'locked' ? <><div className="feedback bad"><Icon name="lock" /><div className="txt">Locked<span>{lockReason(s, o)}</span></div></div>
               {gateDrill && <button className="btn primary big" onClick={() => { setOpen(null); nav.go({ n: 'run', title: `Unlock level ${o.level}`, sub: `${gate!.ready} of ${gate!.need} skills ready`, items: gateDrill.items, count: gateDrill.count, ctx: 'practice' }); }}>Practise toward the unlock</button>}</>
               : <button className="btn primary big" onClick={() => { setOpen(null); nav.go({ n: 'lesson', id: o.id }); }}>{ost === 'available' ? 'Start lesson' : 'Review lesson'}</button>}
+            {ost !== 'passed' && ost !== 'mastered' && <button className="btn ghost" onClick={() => { skipLessons([o.id]); setOpen(null); }}>Skip this lesson (mark as passed, no XP)</button>}
             {skillsOf(o.id).length > 0 && <h3 style={{ marginTop: 6 }}>Skills this lesson unlocks</h3>}
             {skillsOf(o.id).map((k) => {
               const ks = s.skills[k.id], status = ks ? ks.status : 'locked', n = ks?.recent.length ?? 0, acc = n ? Math.round((ks!.recent.filter((r) => r.c).length / n) * 100) : 0;
@@ -68,6 +69,15 @@ export function Learn() {
           </div>
         </Sheet>
       )}
+      {sec && (() => { const ls = sectionList(s, sec.t, sec.lv), word = sec.t === 'synth' ? 'unit' : 'level', earlier = LESSONS.some((x) => x.track === sec.t && x.level < sec.lv && !s.lessons[x.id]?.passedAt); return (
+        <Sheet title={`Skip ${word} ${sec.lv} · ${LEVEL_NAME[sec.t][sec.lv]}`} onClose={() => setSec(null)}>
+          <div className="col">
+            <p className="muted small">Marks {ls.length} lesson{ls.length > 1 ? 's' : ''} in this {word} as passed. No XP is given, you can still open them, and their skills still come up for review over the next week.</p>
+            {earlier && <p className="small">Earlier {word}s are not finished yet, so later ones stay locked until those are passed or skipped too.</p>}
+            <button className="btn primary big" onClick={() => { skipLessons(ls.map((x) => x.id)); setSec(null); }}>Skip this {word}</button>
+            <button className="btn ghost" onClick={() => setSec(null)}>Cancel</button>
+          </div>
+        </Sheet>); })()}
       {skip && (
         <Sheet title={`Skip ahead in ${TRACK_NAME[skip]}`} onClose={() => setSkip(null)}>
           <div className="col">

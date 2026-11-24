@@ -261,3 +261,30 @@ describe('backup reminder and flash-card schedule', () => {
     store.resetAll();
   });
 });
+
+describe('skip a section or a lesson', () => {
+  it('marks just those lessons, opens what follows, gives no XP and keeps other progress', async () => {
+    const store = await import('../src/store'); const sched = await import('../src/sched'); const { LESSONS } = await import('../src/content');
+    store.resetAll(); store.set((s: any) => { s.stars['rush:0:0'] = 1; });
+    const th = LESSONS.filter((l: any) => l.track === 'theory'), lv = [...new Set(th.map((l: any) => l.level))] as number[];
+    // one lesson
+    sched.skipLessons([th[0].id]);
+    expect(store.get().lessons[th[0].id].passedAt).toBeTruthy(); expect(sched.lessonStatus(store.get(), th[1])).toBe('available'); expect(store.get().profile.xp).toBe(0);
+    // the rest of the first section opens the second
+    const n = sched.sectionList(store.get(), 'theory', lv[0]).length; expect(n).toBe(th.filter((l: any) => l.level === lv[0]).length - 1);
+    sched.skipLessons(sched.sectionList(store.get(), 'theory', lv[0]).map((l: any) => l.id));
+    expect(sched.sectionList(store.get(), 'theory', lv[0]).length).toBe(0);
+    expect(sched.lessonStatus(store.get(), th.find((l: any) => l.level === lv[1])!)).toBe('available');
+    // a later section skipped out of order is marked, but what follows stays locked until the gap is closed
+    sched.skipLessons(sched.sectionList(store.get(), 'theory', lv[3]).map((l: any) => l.id));
+    expect(th.filter((l: any) => l.level === lv[3]).every((l: any) => store.get().lessons[l.id]?.passedAt)).toBe(true);
+    expect(sched.lessonStatus(store.get(), th.find((l: any) => l.level === lv[4])!)).toBe('locked');
+    expect(th.filter((l: any) => l.level === lv[2]).some((l: any) => store.get().lessons[l.id]?.passedAt)).toBe(false);
+    // synth units too
+    const sy = LESSONS.filter((l: any) => l.track === 'synth'); const u1 = sy[0].level;
+    sched.skipLessons(sched.sectionList(store.get(), 'synth', u1).map((l: any) => l.id));
+    expect(sched.lessonStatus(store.get(), sy.find((l: any) => l.level !== u1)!)).toBe('available');
+    expect(store.get().profile.xp).toBe(0); expect(store.get().stars['rush:0:0']).toBe(1);
+    store.resetAll();
+  });
+});

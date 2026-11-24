@@ -107,9 +107,13 @@ export function skipList(s: State, t: Track, level: number): Lesson[] { return L
  * progress). Earlier lessons are marked passed with no XP, and their skills count as practised so the level opens;
  * those skills still come round for review, spread over the next week, so anything shaky shows up.
  */
-export function skipAhead(t: Track, level: number) {
+export function skipAhead(t: Track, level: number) { skipLessons(skipList(get(), t, level).map((l) => l.id)); }
+/** Lessons of one section (a level, or a synth unit) not passed yet. */
+export function sectionList(s: State, t: Track, level: number): Lesson[] { return LESSONS.filter((l) => l.track === t && l.level === level && !s.lessons[l.id]?.passedAt); }
+/** Skip one section, or a single lesson: the same marking as skipping ahead, for just those lessons. */
+export function skipLessons(ids: string[]) {
   set((s) => {
-    const ls = skipList(s, t, level), now = Date.now(); let i = 0;
+    const ls = ids.map((id) => LESSON_BY_ID[id]).filter((l) => l && !s.lessons[l.id]?.passedAt), now = Date.now(); let i = 0;
     for (const l of ls) {
       s.lessons[l.id] = { passedAt: now, best: s.lessons[l.id]?.best ?? 0 };
       for (const k of skillsOf(l.id)) {
