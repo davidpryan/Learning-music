@@ -239,3 +239,25 @@ describe('skip ahead', () => {
     store.resetAll();
   });
 });
+
+describe('backup reminder and flash-card schedule', () => {
+  it('reminds only when there is progress and no recent backup, and old saves load', async () => {
+    const store = await import('../src/store'); const bk = await import('../src/backup'); const ref = await import('../src/screens/Reference');
+    store.resetAll(); const now = Date.now(), DAY = 86400000;
+    expect(bk.backupDue(store.get(), now)).toBe(false);                       // nothing to lose yet
+    store.set((s: any) => { s.profile.xp = 500; });
+    expect(bk.backupDue(store.get(), now)).toBe(true);                        // never backed up
+    store.set((s: any) => { s.counters.lastBackup = now - 3 * DAY; });
+    expect(bk.backupDue(store.get(), now)).toBe(false);
+    expect(bk.backupDue(store.get(), now + 20 * DAY)).toBe(true);
+    bk.snoozeBackup(3); expect(bk.backupDue(store.get(), Date.now() + 15 * DAY - 13 * DAY)).toBe(false);
+    // flash cards: a card studied before the schedule existed (no due date) is due now; a fresh deck is not
+    store.set((s: any) => { s.cards['keys:60'] = 2; delete s.cardDue; });
+    const old = JSON.parse(store.exportJson()); store.importJson(JSON.stringify(old));
+    expect(store.get().cardDue).toEqual({}); expect(ref.cardsDue(store.get())).toBe(1); expect(store.get().profile.xp).toBe(500);
+    store.set((s: any) => { s.cardDue['keys:60'] = Date.now() + ref.CARD_GAPS[3] * DAY; });
+    expect(ref.cardsDue(store.get())).toBe(0); expect(ref.cardsDue(store.get(), Date.now() + 8 * DAY)).toBe(1);
+    expect(ref.CARD_GAPS.every((g: number, i: number) => i === 0 || g > ref.CARD_GAPS[i - 1])).toBe(true);
+    store.resetAll();
+  });
+});

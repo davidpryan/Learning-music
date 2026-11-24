@@ -32,7 +32,7 @@ for (const [name, w, h] of SIZES) {
     await click(ex, '.node'); await click('Start', '.sheet .btn.primary'); await sleep(450);
     const f = await fit(); const two = ex === 'Two-hand phrase';
     // two staves plus a keyboard cannot all fit on the shortest screens; there the keyboard and Start button must still be reachable with the score showing
-    const ok = f.statusOk && f.scoreH >= (two ? 180 : 110) && f.scoreTop >= -1 && ((f.inputBottom >= -1 && f.covered <= 4) || (two && h < 700));
+    const ok = f.statusOk && f.scoreH >= (two ? 150 : 110) && f.scoreTop >= -1 && ((f.inputBottom >= -1 && f.covered <= 4) || (two && h < 600));
     check(`${name}: ${ex} shows score, Start and ${ex.includes('Rhythm') ? 'tap pad' : 'keyboard'} together without scrolling`, ok, JSON.stringify(f));
     if (!ex.includes('Rhythm')) check(`${name}: ${ex} keys are a usable size`, f.keyW >= 24 && f.keyW <= 80, String(f.keyW));
     o = await overflow(); check(`${name}: ${ex} does not overflow sideways`, o.doc <= 0 && o.wide === 0, JSON.stringify(o));

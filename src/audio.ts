@@ -61,6 +61,7 @@ function silentWavUrl(): string {
 export function unlockAudio() {
   try {
     const c = ac(); if (c.state !== 'running') c.resume().catch(() => {});
+    loadPiano();
     if (applySession()) return;
     if (!isIOS() || micActive) return;
     if (!silentEl) { silentEl = new Audio(silentWavUrl()); silentEl.loop = true; silentEl.setAttribute('playsinline', ''); }
@@ -74,6 +75,38 @@ export function installAudioUnlock() {
 /** 'running' when sound can play. */
 export const audioState = () => (ctx ? ctx.state : 'not started');
 export function setVolumes(v: number, m: number, fx = true) { vol = v; metVol = m; sfxOn = fx; if (ctx) { master.gain.value = v; metGain.gain.value = m; } }
+// ---------- sampled piano ----------
+// 21 recorded piano notes (every minor third, C2 to C7) from the FluidR3 GM soundfont, CC BY 3.0. Notes in between are
+// the nearest sample played slightly faster or slower. Until the files have loaded, or if they cannot be fetched, the
+// built-in synthesised piano plays instead, so sound never depends on the download.
+const SAMPLE_NAMES = ['C', 'Eb', 'Gb', 'A'];
+const samples = new Map<number, { buf: AudioBuffer; off: number; gain: number }>();
+let sampleLoad: Promise<void> | null = null;
+export const pianoState = () => (samples.size >= 21 ? 'sampled' : sampleLoad ? 'loading' : 'synth');
+export function loadPiano(): Promise<void> {
+  if (sampleLoad) return sampleLoad;
+  const c = ac(), jobs: Promise<void>[] = [];
+  for (let o = 2; o <= 7; o++) SAMPLE_NAMES.forEach((n, i) => {
+    if (o === 7 && i > 0) return;
+    const m = 12 * (o + 1) + i * 3;
+    jobs.push(fetch(new URL(`piano/${n}${o}.mp3`, document.baseURI).href).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
+      .then((ab) => new Promise<AudioBuffer>((res, rej) => { const pr = c.decodeAudioData(ab, res, rej) as any; if (pr?.then) pr.then(res, rej); }))
+      .then((buf) => {
+        // mp3 files start with a few milliseconds of silence; skip it so notes land exactly on the beat
+        const d = buf.getChannelData(0); let peak = 0; for (let k = 0; k < d.length; k += 4) peak = Math.max(peak, Math.abs(d[k]));
+        let first = 0; while (first < d.length && Math.abs(d[first]) < peak * 0.02) first++;
+        samples.set(m, { buf, off: Math.max(0, first / buf.sampleRate - 0.002), gain: peak > 0 ? 0.9 / peak : 1 });
+      }));
+  });
+  sampleLoad = Promise.all(jobs).then(() => undefined).catch(() => { samples.clear(); });
+  return sampleLoad;
+}
+function sampleFor(m: number) {
+  if (samples.size < 21) return null;
+  const base = Math.max(36, Math.min(96, 36 + Math.round((m - 36) / 3) * 3)), sm = samples.get(base);
+  return sm && Math.abs(m - base) <= 7 ? { ...sm, rate: Math.pow(2, (m - base) / 12) } : null;
+}
+
 function track(n: AudioScheduledSourceNode) { live.add(n); n.onended = () => live.delete(n); }
 export function stopAll() { stopHooks.forEach((f) => f()); live.forEach((n) => { try { n.stop(); } catch { /* already stopped */ } }); live.clear(); busyUntil = 0; }
 
@@ -86,7 +119,13 @@ export function playNote(m: number, when = now(), dur = 0.8, timbre: Timbre = 'p
     o.connect(og); track(o); return { o, og };
   };
   let tail = 0.25;
-  if (timbre === 'piano') {
+  const smp = timbre === 'piano' ? sampleFor(m) : null;
+  if (smp) {
+    const src = c.createBufferSource(); src.buffer = smp.buf; src.playbackRate.value = smp.rate; src.connect(g); track(src);
+    const level = vel * smp.gain * 1.15;
+    g.gain.setValueAtTime(level, t0); g.gain.setValueAtTime(level, end); g.gain.exponentialRampToValueAtTime(0.0008, end + tail);
+    src.start(t0, smp.off); src.stop(end + tail + 0.02);
+  } else if (timbre === 'piano') {
     // Phone and laptop speakers barely reproduce anything below about 250 Hz, so low notes lean on their
     // upper harmonics: the ear fills in the missing fundamental and still hears the right pitch.
     const low = Math.max(0, Math.min(1, (66 - m) / 24));

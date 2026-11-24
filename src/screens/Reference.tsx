@@ -130,7 +130,7 @@ export function CheatSheets() {
 
 // ---------- flash cards ----------
 interface Face { text?: string; sub?: string; score?: Passage; showTime?: boolean; kb?: number[]; play?: number[]; chord?: boolean }
-interface Card { id: string; front: Face; back: Face }
+interface Card { id: string; front: Face; back: Face; /** full save key, set on cards gathered from several decks */ key?: string }
 interface Deck { id: string; name: string; blurb: string; cards: Card[] }
 const kbCard = (m: number, name: string): Card => ({ id: String(m), front: { text: 'Which key is marked?', kb: [m] }, back: { text: name, kb: [m], play: [m] } });
 export const DECKS: Deck[] = [
@@ -148,9 +148,22 @@ export const DECKS: Deck[] = [
   { id: 'chordtypes', name: 'Chord types', blurb: 'The recipe for each kind of chord.', cards: Object.entries(QUAL).map(([id, q]) => { const ps = chordTones(P('C4'), id); return { id, front: { text: `${q.name} chord`, sub: `Written C${q.sym}. Which scale degrees?` }, back: { text: FORMULA[id], sub: `C${q.sym}: ${names(ps)}`, kb: up(ps), play: up(ps), chord: true } }; }) },
   { id: 'triads', name: 'Major and minor triads', blurb: 'Name the three notes of each chord.', cards: ROOTS12.flatMap((r) => (['maj', 'min'] as const).map((q) => { const ps = chordTones(P(r + '4'), q); return { id: r + q, front: { text: `${pretty(r)} ${q === 'maj' ? 'major' : 'minor'}`, sub: 'Which three notes?' }, back: { text: names(ps), kb: up(ps), play: up(ps), chord: true } }; })) },
 ];
-const box = (s: { cards?: Record<string, number> }, d: string, c: string) => s.cards?.[`${d}:${c}`] ?? 0;
+type CardSave = { cards?: Record<string, number>; cardDue?: Record<string, number> };
+const DAY = 86400000;
+/** Days until a card comes back, by how many times running it was known. A miss sends it back to the start. */
+export const CARD_GAPS = [0, 1, 3, 7, 16, 35, 70];
+const keyOf = (d: Deck, c: Card) => c.key ?? `${d.id}:${c.id}`;
+const box = (s: CardSave, d: string, c: string) => s.cards?.[`${d}:${c}`] ?? 0;
+/** Every card that has been studied before and is due again, across all decks. Cards never studied are not counted. */
+export function dueCards(s: CardSave, now = Date.now()): Card[] {
+  const out: Card[] = [];
+  for (const d of DECKS) for (const c of d.cards) { const k = `${d.id}:${c.id}`; if (s.cards && k in s.cards && (s.cardDue?.[k] ?? 0) <= now) out.push({ ...c, id: k, key: k }); }
+  return out;
+}
+export const cardsDue = (s: CardSave, now = Date.now()) => dueCards(s, now).length;
+const deckDue = (s: CardSave, d: Deck, now = Date.now()) => d.cards.filter((c) => { const k = `${d.id}:${c.id}`; return s.cards && k in s.cards && (s.cardDue?.[k] ?? 0) <= now; }).length;
 /** Cards you have got right twice running count as known. */
-export const deckKnown = (s: { cards?: Record<string, number> }, d: Deck) => d.cards.filter((c) => box(s, d.id, c.id) >= 2).length;
+export const deckKnown = (s: CardSave, d: Deck) => d.cards.filter((c) => box(s, d.id, c.id) >= 2).length;
 
 function FaceView({ f }: { f: Face }) {
   const lo = f.kb ? Math.min(60, Math.floor(Math.min(...f.kb) / 12) * 12) : 60, hi = f.kb ? Math.max(72, Math.ceil((Math.max(...f.kb) + 1) / 12) * 12) : 72;
@@ -165,20 +178,20 @@ function FaceView({ f }: { f: Face }) {
 }
 function Study({ deck, onExit }: { deck: Deck; onExit: () => void }) {
   // weakest cards first, shuffled within each box
-  const first = useMemo(() => shuffle(mulberry(Date.now() & 0xffff), deck.cards).sort((a, b) => box(get(), deck.id, a.id) - box(get(), deck.id, b.id)).map((c) => c.id), [deck.id]);
+  const first = useMemo(() => shuffle(mulberry(Date.now() & 0xffff), deck.cards).sort((a, b) => (get().cards[keyOf(deck, a)] ?? 0) - (get().cards[keyOf(deck, b)] ?? 0)).map((c) => c.id), [deck.id]);
   const [queue, setQueue] = useState(first), [flipped, setFlipped] = useState(false), [missed, setMissed] = useState<string[]>([]), [round, setRound] = useState(0);
   const s = useS(); const card = deck.cards.find((c) => c.id === queue[0]);
   const mark = (ok: boolean) => {
     if (!card) return; stopAll();
-    set((st) => { st.cards = st.cards ?? {}; const k = `${deck.id}:${card.id}`; st.cards[k] = ok ? Math.min(3, (st.cards[k] ?? 0) + 1) : 0; });
+    set((st) => { st.cards = st.cards ?? {}; st.cardDue = st.cardDue ?? {}; const k = keyOf(deck, card), b = ok ? Math.min(CARD_GAPS.length - 1, (st.cards[k] ?? 0) + 1) : 0; st.cards[k] = b; st.cardDue[k] = Date.now() + CARD_GAPS[b] * DAY; });
     if (!ok && !missed.includes(card.id)) setMissed([...missed, card.id]);
     const rest = queue.slice(1); if (!ok) rest.splice(Math.min(3, rest.length), 0, card.id); // a missed card comes back after a few others
     setQueue(rest); setFlipped(false);
   };
   const again = (ids: string[]) => { setQueue(ids); setMissed([]); setFlipped(false); setRound(round + 1); };
-  const total = deck.cards.length, known = deckKnown(s, deck);
+  const mixed = deck.id === 'due', total = deck.cards.length, known = mixed ? total - queue.length : deckKnown(s, deck);
   return (
-    <><TopBar title={deck.name} sub={`${known} of ${total} known`} onBack={onExit} /><main className="main col">
+    <><TopBar title={deck.name} sub={mixed ? `${known} of ${total} reviewed` : `${known} of ${total} known`} onBack={onExit} /><main className="main col">
       <Bar v={known / total} />
       {card ? <>
         <div className="small muted">{queue.length} to go</div>
@@ -192,9 +205,9 @@ function Study({ deck, onExit }: { deck: Deck; onExit: () => void }) {
         <div className="small muted center">Say the answer to yourself first, then check. Be honest: "Again" brings the card back in a moment.</div>
       </> : <div className="col center" style={{ paddingTop: 16 }}>
         <h1>Deck done</h1>
-        <p className="muted">{missed.length ? `${missed.length} card${missed.length > 1 ? 's' : ''} needed another look.` : 'Every card right first time.'} {known} of {total} known.</p>
+        <p className="muted">{missed.length ? `${missed.length} card${missed.length > 1 ? 's' : ''} needed another look.` : 'Every card right first time.'} {mixed ? 'Each card comes back after a longer gap every time you know it.' : `${known} of ${total} known.`}</p>
         {missed.length > 0 && <button className="btn primary big" onClick={() => again(missed)}>Go over the {missed.length} I missed</button>}
-        <button className="btn big" onClick={() => again(shuffle(mulberry(Date.now() & 0xffff), deck.cards).map((c) => c.id))}>Whole deck again</button>
+        {!mixed && <button className="btn big" onClick={() => again(shuffle(mulberry(Date.now() & 0xffff), deck.cards).map((c) => c.id))}>Whole deck again</button>}
         <button className="btn ghost" onClick={onExit}>Choose another deck</button>
       </div>}
     </main></>
@@ -202,13 +215,15 @@ function Study({ deck, onExit }: { deck: Deck; onExit: () => void }) {
 }
 export function FlashCards() {
   const nav = useNav(), s = useS(); const [deck, setDeck] = useState<string | null>(null);
-  const d = DECKS.find((x) => x.id === deck);
+  const due = useMemo(() => dueCards(get()), [deck]);
+  const d = deck === 'due' ? { id: 'due', name: 'Cards due today', blurb: '', cards: due } : DECKS.find((x) => x.id === deck);
   if (d) return <Study deck={d} onExit={() => { stopAll(); setDeck(null); }} />;
   return (
     <><TopBar title="Flash cards" sub="Memorise the basics" onBack={nav.back} /><main className="main col">
-      <p className="muted small">Pick a deck. Cards you get right twice running count as known; missed ones come round again. Your progress is saved.</p>
+      <p className="muted small">Pick a deck. Cards you get right twice running count as known. Each card then comes back after a longer and longer gap (a day, 3 days, a week, and so on); a miss starts it again.</p>
+      {due.length > 0 && <button className="btn primary big" onClick={() => setDeck('due')}>Review {due.length} card{due.length > 1 ? 's' : ''} due today</button>}
       {DECKS.map((x) => { const k = deckKnown(s, x); return (
-        <button key={x.id} className="node" onClick={() => setDeck(x.id)}><span className="grow"><b>{x.name}</b><br /><span className="small muted">{x.blurb}</span><Bar v={k / x.cards.length} /></span><span className={'chip' + (k ? ' accent' : '')}>{k}/{x.cards.length}</span></button>); })}
+        <button key={x.id} className="node" onClick={() => setDeck(x.id)}><span className="grow"><b>{x.name}</b><br /><span className="small muted">{x.blurb}</span><Bar v={k / x.cards.length} /></span><span style={{ textAlign: 'right', flex: '0 0 auto' }}><span className={'chip' + (k ? ' accent' : '')}>{k}/{x.cards.length}</span>{deckDue(s, x) > 0 && <><br /><span className="small muted">{deckDue(s, x)} due</span></>}</span></button>); })}
       <button className="btn" onClick={() => nav.go({ n: 'sheets' })}>Look things up in the cheat sheets</button>
     </main></>
   );

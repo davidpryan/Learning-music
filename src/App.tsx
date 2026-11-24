@@ -1,3 +1,4 @@
+import { keepStorage } from './backup';
 import { useEffect, useRef, useState } from 'react';
 import { Nav, Route } from './nav';
 import { load, useS, get, set, dayKey } from './store';
@@ -29,6 +30,7 @@ export default function App() {
   const active = useRef(Date.now());
   useEffect(() => {
     load().then(async () => {
+      keepStorage();
       micState.gate = get().profile.micGate;
       // Synth mode is a separate download: fetch it now only for someone who uses it, or who arrived on a patch link.
       const st = get(), usesSynth = st.profile.mode === 'synth' || Object.keys(st.lessons).some((id) => id.startsWith('S')) || !!sharedPatch;

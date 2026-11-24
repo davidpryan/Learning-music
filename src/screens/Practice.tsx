@@ -1,3 +1,4 @@
+import { cardsDue } from './Reference';
 import { useRef, useState } from 'react';
 import { EX_LIST, ExDef, exParams } from '../exercises';
 import { useNav } from '../nav';
@@ -49,7 +50,7 @@ export function Practice() {
           <div className="level-h">Reference</div>
           <div className="grid2">
             <button className="card tap" onClick={() => nav.go({ n: 'sheets' })}><Icon name="list" /><span className="grow"><b>Cheat sheets</b><br /><span className="small muted">Look it up</span></span></button>
-            <button className="card tap" onClick={() => nav.go({ n: 'cards' })}><Icon name="star" /><span className="grow"><b>Flash cards</b><br /><span className="small muted">Memorise it</span></span></button>
+            <button className="card tap" onClick={() => nav.go({ n: 'cards' })}><Icon name="star" /><span className="grow"><b>Flash cards</b><br /><span className="small muted">{cardsDue(s) > 0 ? `${cardsDue(s)} due today` : 'Memorise it'}</span></span></button>
           </div>
         </section>}
         {TRACKS.map((t) => (

@@ -98,3 +98,7 @@ The app follows the Toybox style guide, with its Learning extensions: flat solid
 
 MIT. See [LICENSE](LICENSE). The tunes in the piece library are in the public domain; their encodings here are covered by the same licence.
 Notation is drawn with [VexFlow](https://www.vexflow.com/) (MIT); review scheduling uses [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs) (MIT).
+
+## Credits
+
+Piano samples in `public/piano/` come from the FluidR3 GM soundfont by Frank Wen, as packaged in [midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/us/). They were converted to mono and shortened. If the files are missing the app falls back to its built-in synthesised piano.

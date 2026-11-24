@@ -139,7 +139,7 @@ input[type='range'] { width: 100%; accent-color: var(--ink); min-height: 44px; }
    unfolded inner display on its side (951 x 669). The status area becomes one row and the keys a little shorter, so
    the score, the Start button and the keyboard are all on screen together without scrolling. */
 @media (max-height: 720px) {
-  .perf-score { max-height: max(140px, calc(100dvh - 520px)); } .perf-score.tall { max-height: max(220px, calc(100dvh - 520px)); }
+  .perf-score { max-height: max(140px, calc(100dvh - 520px)); } .perf-score.tall { max-height: max(160px, calc(100dvh - 520px)); }
   .main:has(.dock) .prompt + .muted.small { display: none; }
   .dock .perf-status { height: 48px; flex-direction: row; align-items: center; }
   .dock .perf-status > .row { flex: 1 1 auto; min-width: 0; } .dock .perf-status > .row:has(+ .btn.big) { flex: 0 0 auto; } .dock .perf-status > .btn.big { flex: 1 1 auto; min-height: 44px; padding: 6px 12px; white-space: nowrap; }
@@ -156,7 +156,7 @@ input[type='range'] { width: 100%; accent-color: var(--ink); min-height: 44px; }
   .shell:has(.dock) .topbar .status { display: none; }
   .main:has(.dock) { margin-top: 8px; padding-top: 10px; padding-bottom: 10px; }
   .main:has(.dock) .col { gap: 8px; }
-  .perf-score { max-height: max(140px, calc(100dvh - 424px)); } .perf-score.tall { max-height: max(200px, calc(100dvh - 424px)); }
+  .perf-score { max-height: max(140px, calc(100dvh - 424px)); } .perf-score.tall { max-height: max(160px, calc(100dvh - 424px)); }
 }
 @media (max-height: 500px) {
   /* a phone on its side: only the score, the controls and the keys */
@@ -243,6 +243,9 @@ table.simple { width: 100%; border-collapse: collapse; font-size: 14px; } table.
 .tb-menu-row .tb-chip { min-width: 46px; padding: 0; font-size: 20px; }
 
 .tb-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.staff-in { position: relative; overflow: hidden; border: 2px solid var(--line2); border-radius: 12px; background: var(--white); cursor: crosshair; user-select: none; -webkit-user-select: none; }
+.staff-tip { position: absolute; top: 6px; right: 8px; font-weight: 700; background: var(--ink); color: var(--white); border-radius: 8px; padding: 2px 8px; }
+.seg.sm button { min-height: 34px; padding: 4px 10px; font-size: 13px; }
 /* cheat sheets and flash cards */
 .sheet-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line2); }
 .sheet-fig { flex: 0 0 46%; max-width: 230px; pointer-events: none; }

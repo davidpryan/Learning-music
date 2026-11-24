@@ -1,6 +1,6 @@
 // Passage -> engraved SVG via VexFlow.
 import { useEffect, useRef, useState } from 'react';
-import { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Beam, StaveConnector, Dot, StaveTie, Annotation, Fraction } from 'vexflow';
+import { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, Beam, StaveConnector, Dot, StaveTie, Annotation, Fraction } from 'vexflow/bravura';
 import { Passage, PNote, barLen, measures, describe } from './passage';
 import { key, vfKey, midi } from './music';
 

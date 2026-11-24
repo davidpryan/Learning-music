@@ -1,3 +1,4 @@
+import { backupNow, backupAge } from '../backup';
 import { useEffect, useRef, useState } from 'react';
 import { useNav } from '../nav';
 import { get, set, useS, exportJson, importJson, resetAll } from '../store';
@@ -100,16 +101,16 @@ export function Settings() {
         <div className="small muted">Music and synth each have their own goal. Time counts toward the mode you are in, and meeting either goal keeps your streak.</div>
       </section>
       <section className="card line col"><h2>Your data</h2>
-        <div className="small muted">Everything is stored only in this browser. Export a copy now and then, and to move to another device.</div>
+        <div className="small muted">Everything is stored only in this browser. Back up now and then, and to move to another device. You will get a reminder every two weeks. Status: {backupAge(s)}.</div>
         <div className="small muted">Lost your progress and have no export? On the Learn tab, "Skip ahead" lets you start each track at the level you had reached.</div>
-        <div className="row wrap"><button className="btn" onClick={doExport}>Export</button><button className="btn" onClick={() => file.current?.click()}>Import a file</button><button className="btn" disabled={!io.trim()} onClick={() => doImport(io)}>Import pasted text</button>
+        <div className="row wrap"><button className="btn primary" onClick={async () => { const r = await backupNow(); setIo(exportJson()); setMsg(r === 'shared' ? 'Backup shared. Save it to Files or iCloud Drive to keep it.' : r === 'downloaded' ? 'Backup saved to your downloads.' : r === 'cancelled' ? 'Backup cancelled.' : 'Could not save a file. Copy the text below instead.'); }}>Back up now</button><button className="btn" onClick={doExport}>Export</button><button className="btn" onClick={() => file.current?.click()}>Import a file</button><button className="btn" disabled={!io.trim()} onClick={() => doImport(io)}>Import pasted text</button>
           <button className="btn" disabled={!io} onClick={() => navigator.clipboard?.writeText(io).then(() => setMsg('Copied.'), () => setMsg('Select the text and copy it by hand.'))}>Copy</button></div>
         <input ref={file} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) doImport(await f.text()); e.target.value = ''; }} />
         <textarea aria-label="Exported data, or paste an export here to import" placeholder="Exported data appears here. To import, paste an export and press Import pasted text." value={io} onChange={(e) => setIo(e.target.value)} />
         {msg && <div className="small" role="status">{msg}</div>}
         {!confirm ? <button className="btn" onClick={() => setConfirm(true)}>Reset all progress…</button> : <div className="feedback bad"><div className="txt">Erase all progress on this device?<span>This cannot be undone. Export first if unsure.</span><div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => setConfirm(false)}>Cancel</button><button className="btn sm" onClick={() => { resetAll(); setConfirm(false); setMsg('Progress erased.'); }}>Erase everything</button></div></div></div>}
       </section>
-      <section className="small muted">Learning Music 1.0 · MIT licence · No account, no tracking. Microphone audio is analysed on this device and never recorded or sent anywhere.</section>
+      <section className="small muted">Learning Music 1.0 · MIT licence · No account, no tracking. Microphone audio is analysed on this device and never recorded or sent anywhere. Piano samples from the FluidR3 GM soundfont (Frank Wen), via midi-js-soundfonts, CC BY 3.0.</section>
     </main></>
   );
 }

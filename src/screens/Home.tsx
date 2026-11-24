@@ -1,3 +1,5 @@
+import { backupDue, backupAge, backupNow, snoozeBackup } from '../backup';
+import { cardsDue } from './Reference';
 import { useNav } from '../nav';
 import { useS, dayKey, storageNote } from '../store';
 import { dayProgress, dueSkills, SYNTH_REVIEW_CAP, nextLesson, liveStreak, playerLevel, playerTitle, gateFor, drillFor, setMode } from '../sched';
@@ -14,6 +16,7 @@ export function Home() {
   const dc = synth ? null : dailyChallenge(), dcDone = !!s.counters['dailyDone:' + dayKey()];
   const fresh = !Object.keys(s.lessons).length, freshSynth = synth && !Object.keys(s.lessons).some((id) => id.startsWith('S'));
   const gates = TRACKS.map((t) => ({ t, g: gateFor(s, t) })).filter((x) => x.g && x.g.todo.length);
+  const due2 = cardsDue(s);
   return (
     <>
       <TopBar title="Learning Music" sub={`${playerTitle(xp)} · level ${playerLevel(xp)}`} right={<>
@@ -50,6 +53,9 @@ export function Home() {
         </div>
         {synth && <button className="card tap" onClick={() => nav.go({ n: 'sandbox' })}><Icon name="keys" /><span className="grow"><span className="small muted">Free play</span><br /><b>Open the synth</b></span><Icon name="playtri" size={14} /></button>}
         {dc && <button className="card tap" onClick={() => nav.go({ n: 'game', id: dc.id, daily: true })}><Icon name="star" /><span className="grow"><span className="small muted">Daily challenge{dcDone ? ' · done today' : ''}</span><br /><b>{dc.name}</b></span><Icon name="playtri" size={14} /></button>}
+        {!synth && due2 > 0 && <button className="card tap" onClick={() => nav.go({ n: 'cards' })}><Icon name="star" /><span className="grow"><span className="small muted">Flash cards</span><br /><b>{due2} card{due2 > 1 ? 's' : ''} to review</b></span><Icon name="playtri" size={14} /></button>}
+        {backupDue(s) && <div className="card line col" style={{ gap: 8 }} role="status"><div><b>Back up your progress</b><br /><span className="small muted">It is stored only on this device ({backupAge(s)}). Save a copy so a lost or reset phone does not lose it.</span></div>
+          <div className="row"><button className="btn primary" onClick={() => { backupNow(); }}>Back up now</button><button className="btn ghost" onClick={() => snoozeBackup()}>Later</button></div></div>}
         {storageNote() && <div className="feedback bad"><div className="txt"><span>{storageNote()}</span></div></div>}
       </main>
     </>

@@ -8,7 +8,7 @@ import { CFG } from './config';
 export type InputMode = 'screen' | 'mic' | 'midi' | 'choice';
 export interface Settings {
   input: InputMode; timbre: Timbre; volume: number; metVolume: number; notationScale: number;
-  nameSystem: 'letters' | 'solfege'; keyLabels: 'auto' | 'on' | 'off'; reducedMotion: boolean; theme: 'light' | 'dark'; voiceMode: boolean; showCursor: boolean; bigKeys: boolean; sfx: boolean;
+  nameSystem: 'letters' | 'solfege'; keyLabels: 'auto' | 'on' | 'off'; reducedMotion: boolean; theme: 'light' | 'dark'; voiceMode: boolean; showCursor: boolean; bigKeys: boolean; sfx: boolean; staffEntry?: boolean;
 }
 export interface SkillState { status: 'learning' | 'practiced' | 'mastered'; card: any; recent: { c: boolean; ms: number; t: number }[]; againRun: number; items: Record<string, number[]> }
 export interface Attempt { t: number; skill: string; ex: string; ctx: string; c: boolean; ms: number; input: string; pp?: number; rp?: number }
@@ -29,15 +29,17 @@ export interface State {
   counters: Record<string, number>; synthPatches: { name: string; patch: Record<string, number> }[]; userPieces: { id: string; title: string; xml: string }[]; dailyLog: { d: string; game: string; score: number }[];
   /** Flash cards: how many times running each card was known (0 to 3), keyed deck:card. */
   cards: Record<string, number>;
+  /** Flash cards: when each card is next due (ms since 1970), same keys as `cards`. */
+  cardDue: Record<string, number>;
 }
 export const SCHEMA = 1;
 export const defaults = (): State => ({
   v: SCHEMA,
   profile: {
     xp: 0, mode: 'music', dailyGoalMin: 10, synthGoalMin: 10, streak: 0, lastGoalDate: '', freezeWeek: '', badges: [], latency: { screen: 0, mic: 60, midi: 0 }, voiceRange: null, micGate: 0.012, onboarded: false,
-    settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false, sfx: true },
+    settings: { input: 'screen', timbre: 'piano', volume: 0.8, metVolume: 0.7, notationScale: 1, nameSystem: 'letters', keyLabels: 'auto', reducedMotion: false, theme: 'light', voiceMode: true, showCursor: true, bigKeys: false, sfx: true, staffEntry: false },
   },
-  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [], cards: {},
+  skills: {}, lessons: {}, attempts: [], bests: {}, stars: {}, highs: {}, days: {}, presets: {}, keyQuest: [], tempo: {}, counters: {}, synthPatches: [], userPieces: [], dailyLog: [], cards: {}, cardDue: {},
 });
 
 let state: State = defaults();

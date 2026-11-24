@@ -1,3 +1,4 @@
+import { StaffInput } from './StaffInput';
 // The shared question runner: asks any exercise, takes any input, grades, records, gives feedback.
 import { useEffect, useRef, useState } from 'react';
 import { EX, exParams, Question, Slot, Answer } from '../exercises';
@@ -9,7 +10,7 @@ import { stopAll, playSeq, sfx, audioState } from '../audio';
 import { matchStep } from '../grade';
 import { record, isWeakItem } from '../sched';
 import { pickFresh, forget } from '../pick';
-import { get, useS, InputMode } from '../store';
+import { get, set, useS, InputMode } from '../store';
 import { CFG } from '../config';
 import { Keyboard, KeyMark } from './Keyboard';
 import { Icon, InputSwitch, MicBar, MidiBar } from './common';
@@ -134,7 +135,7 @@ export function Runner(p: RunnerProps) {
 }
 
 function StepsArea({ q, a, mode, done, ok, labels, onFinish }: { q: Question; a: Extract<Answer, { kind: 'steps' }>; mode: InputMode; done: boolean; ok?: boolean; labels?: boolean; onFinish: (ok: boolean, used?: string) => void }) {
-  const voice = get().profile.settings.voiceMode;
+  const voice = get().profile.settings.voiceMode, onStaff = !!useS().profile.settings.staffEntry;
   const [idx, setIdx] = useState(0), [sel, setSel] = useState<number[]>([]), [marks, setMarks] = useState<Record<number, KeyMark>>({});
   const st = useRef({ idx: 0, sel: [] as number[], first: -1, done: false });
   const range = q.kbRange ?? [60, 84];
@@ -168,7 +169,9 @@ function StepsArea({ q, a, mode, done, ok, labels, onFinish }: { q: Question; a:
       {a.steps.length > 1 && <div className="row"><span className="chip">Step {Math.min(idx + 1, a.steps.length)} of {a.steps.length}</span><div className="grow"><div className="bar"><i style={{ width: `${(idx / a.steps.length) * 100}%` }} /></div></div></div>}
       {mode === 'mic' && <><MicBar /><div className="small muted">{multi ? 'Sing or play the chord one note at a time, lowest first.' : 'Sing or play the note. Hold it steady.'}</div></>}
       {mode === 'midi' && <MidiBar />}
-      {mode === 'screen' && <Keyboard lo={range[0]} hi={range[1]} marks={{ ...marks, ...reveal }} selected={sel} labels={labels} />}
+      {mode === 'screen' && <div className="seg sm" role="group" aria-label="Answer with">{([['keys', 'Keys'], ['staff', 'Write on staff']] as const).map(([v, t]) => <button key={v} aria-pressed={(onStaff ? 'staff' : 'keys') === v} onClick={() => set((x) => { x.profile.settings.staffEntry = v === 'staff'; })}>{t}</button>)}</div>}
+      {mode === 'screen' && !onStaff && <Keyboard lo={range[0]} hi={range[1]} marks={{ ...marks, ...reveal }} selected={sel} labels={labels} />}
+      {mode === 'screen' && onStaff && <StaffInput lo={range[0]} hi={range[1]} marks={marks} selected={multi ? sel : undefined} reveal={done && ok === false ? a.steps[st.current.idx] : []} multi={multi} stepKey={idx} disabled={done} />}
       {mode === 'screen' && multi && !done && <button className="btn primary" disabled={!sel.length} onClick={() => evalChord('screen')}>Check chord ({sel.length} selected)</button>}
     </div>
   );

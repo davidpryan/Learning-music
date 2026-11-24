@@ -16,8 +16,13 @@ export interface PerfExtra { pp: number; rp: number; perfect?: number; good?: nu
 type PA = Extract<Answer, { kind: 'rhythm' | 'perform' }>;
 const RANK: Mark[] = ['ok', 'early', 'late', 'wrong', 'miss'];
 
+function useShort() {
+  const q = '(max-height: 720px)'; const [v, setV] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(q).matches);
+  useEffect(() => { if (typeof matchMedia === 'undefined') return; const m = matchMedia(q), h = () => setV(m.matches); h(); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
+  return v;
+}
 export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoOverride, arcade }: { a: PA; q: Question; mode: InputMode; onFinish: (ok: boolean, x: PerfExtra) => void; scan?: number; tempoOverride?: number; arcade?: boolean }) {
-  const s = useS(), st = s.profile.settings;
+  const s = useS(), st = s.profile.settings, short = useShort();
   const passage = a.passage, expectP = a.kind === 'perform' ? a.expect ?? passage : passage;
   const unit = passage.time[1] === 8 ? 1.5 : 1, bar = barLen(passage.time), clicksPerBar = Math.max(1, Math.round(bar / unit));
   const tKey = a.kind === 'perform' ? a.tempoKey : 'rhythm';
@@ -124,10 +129,12 @@ export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoO
   const showScore = a.kind === 'perform' || a.visual || phase === 'result';
   const range = q.kbRange ?? [60, 84];
   const live = phase === 'play' || phase === 'countin';
+  // two staves on a short screen (a folded Duo, a phone in Safari): draw the music a little smaller so it fits above the keys
+  const shortTall = passage.staves.length > 1 && phase !== 'result' && short;
   const chordal = a.kind === 'perform' && (expectP.staves.length > 1 || onsets(expectP).some((o) => o.midis.length > 1));
   return (
     <div className="col" ref={root}>
-      {showScore && <div className={phase === 'result' ? undefined : 'perf-score' + (passage.staves.length > 1 ? ' tall' : '')}><Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={st.notationScale} /></div>}
+      {showScore && <div className={phase === 'result' ? undefined : 'perf-score' + (passage.staves.length > 1 ? ' tall' : '')}><Score spec={{ passage, colors: phase === 'result' ? result?.colors : undefined }} cursor={phase === 'play' && st.showCursor ? cursor : null} scale={shortTall ? Math.min(st.notationScale, 0.78) : st.notationScale} /></div>}
       {/* One block, always in the same place: a fixed-height status area, then the input. Nothing below the score
           changes size between scanning, the count-in and playing, so the keyboard never moves under your hands. */}
       {phase !== 'result' && (

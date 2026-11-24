@@ -6,7 +6,7 @@ export const CFG = {
   phrasePass: 0.6, phraseEasy: 0.95,
   targetMs: { identify: 3000, construct: 6000, ear: 10000 },
   practicedN: 10, practicedAcc: 0.8, masteredN: 20, masteredAcc: 0.9,
-  levelUnlockShare: 0.8,
+  levelUnlockShare: 0.6,
   sessionReviewCap: 20, sessionNoNewAbove: 30, earSetSize: 10,
   tempoStart: 60, tempoUp: 4, tempoDown: 8, tempoUpAfter: 3, tempoDownAfter: 2,
   xpPerItem: 10, xpPerLevel: 500,
