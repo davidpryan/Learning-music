@@ -101,6 +101,7 @@ export function Settings() {
       </section>
       <section className="card line col"><h2>Your data</h2>
         <div className="small muted">Everything is stored only in this browser. Export a copy now and then, and to move to another device.</div>
+        <div className="small muted">Lost your progress and have no export? On the Learn tab, "Skip ahead" lets you start each track at the level you had reached.</div>
         <div className="row wrap"><button className="btn" onClick={doExport}>Export</button><button className="btn" onClick={() => file.current?.click()}>Import a file</button><button className="btn" disabled={!io.trim()} onClick={() => doImport(io)}>Import pasted text</button>
           <button className="btn" disabled={!io} onClick={() => navigator.clipboard?.writeText(io).then(() => setMsg('Copied.'), () => setMsg('Select the text and copy it by hand.'))}>Copy</button></div>
         <input ref={file} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={async (e) => { const f = e.target.files?.[0]; if (f) doImport(await f.text()); e.target.value = ''; }} />

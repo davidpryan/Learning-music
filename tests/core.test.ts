@@ -213,3 +213,29 @@ describe('flash cards', () => {
     store.resetAll();
   });
 });
+
+describe('skip ahead', () => {
+  it('opens the chosen level, gives no XP, and leaves existing progress alone', async () => {
+    const store = await import('../src/store'); const sched = await import('../src/sched'); const { LESSONS } = await import('../src/content');
+    store.resetAll();
+    const first = LESSONS.find((l: any) => l.track === 'theory')!;
+    sched.passLesson(first.id, 5); const xp = store.get().profile.xp, at = store.get().lessons[first.id].passedAt;
+    store.set((s: any) => { s.stars['rush:0:0'] = 2; s.cards['keys:60'] = 3; });
+    const n = sched.skipList(store.get(), 'theory', 3).length; expect(n).toBeGreaterThan(3);
+    sched.skipAhead('theory', 3);
+    const s = store.get();
+    expect(s.profile.xp).toBe(xp); expect(s.lessons[first.id].passedAt).toBe(at); expect(s.lessons[first.id].best).toBe(5);
+    expect(s.stars['rush:0:0']).toBe(2); expect(s.cards['keys:60']).toBe(3);
+    for (const l of LESSONS.filter((x: any) => x.track === 'theory' && x.level < 3)) expect(s.lessons[l.id]?.passedAt).toBeTruthy();
+    const l3 = LESSONS.find((x: any) => x.track === 'theory' && x.level === 3)!;
+    expect(sched.lessonStatus(s, l3)).toBe('available');
+    expect(LESSONS.filter((x: any) => x.track === 'theory' && x.level >= 3).every((x: any) => !s.lessons[x.id]?.passedAt)).toBe(true);
+    expect(LESSONS.filter((x: any) => x.track !== 'theory').every((x: any) => !s.lessons[x.id]?.passedAt)).toBe(true);
+    // a wrong answer on a skipped skill must not lock the level again
+    const k = LESSONS.filter((x: any) => x.track === 'theory' && x.level === 2).flatMap((x: any) => sched.skillsOf(x.id))[0];
+    sched.record({ skillId: k.id, ex: k.ex, ctx: 'drill', correct: false, ms: 2000, input: 'screen' });
+    expect(sched.lessonStatus(store.get(), l3)).toBe('available');
+    expect(sched.skipList(store.get(), 'theory', 3).length).toBe(0);
+    store.resetAll();
+  });
+});

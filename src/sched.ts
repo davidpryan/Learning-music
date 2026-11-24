@@ -100,6 +100,30 @@ export function passLesson(id: string, score: number, quiet = false, credit: { s
 /** Placement: mark a set of lessons as passed without XP. */
 export function placeOut(ids: string[]) { ids.forEach((id) => passLesson(id, 4, true)); }
 
+/** Lessons a skip to `level` would mark as passed: everything below that level in the track not passed already. */
+export function skipList(s: State, t: Track, level: number): Lesson[] { return LESSONS.filter((l) => l.track === t && l.level < level && !s.lessons[l.id]?.passedAt); }
+/**
+ * Skip ahead: start a track at a chosen level, for someone who already knows the earlier material (or lost their
+ * progress). Earlier lessons are marked passed with no XP, and their skills count as practised so the level opens;
+ * those skills still come round for review, spread over the next week, so anything shaky shows up.
+ */
+export function skipAhead(t: Track, level: number) {
+  set((s) => {
+    const ls = skipList(s, t, level), now = Date.now(); let i = 0;
+    for (const l of ls) {
+      s.lessons[l.id] = { passedAt: now, best: s.lessons[l.id]?.best ?? 0 };
+      for (const k of skillsOf(l.id)) {
+        const cur = s.skills[k.id];
+        if (cur && cur.status !== 'learning') continue;
+        const recent = [...(cur?.recent ?? []).filter((r) => r.c), ...Array.from({ length: CFG.practicedN }, () => ({ c: true, ms: k.target || 3000, t: now }))].slice(-CFG.practicedN);
+        s.skills[k.id] = { status: 'practiced', card: cur?.card ?? createEmptyCard(new Date(now + (i++ % 7) * 86400000)), recent, againRun: 0, items: cur?.items ?? {} };
+      }
+    }
+    s.counters.skipped = (s.counters.skipped ?? 0) + ls.length;
+    checkBadges(s);
+  });
+}
+
 // ---------- recording attempts ----------
 export interface AttemptIn { skillId?: string; ex: string; ctx: string; correct: boolean; ms: number; input: string; hinted?: boolean; pp?: number; rp?: number; item?: string; combo?: number }
 function statusOf(k: SkillState, target: number, slow = false): SkillState['status'] {

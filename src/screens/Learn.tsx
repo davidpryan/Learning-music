@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { LESSONS, modeTracks, TRACK_NAME, LEVEL_NAME, Track, Lesson } from '../content';
 import { useNav } from '../nav';
 import { useS } from '../store';
-import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW_EX } from '../sched';
+import { lessonStatus, lockReason, skillsOf, trackStats, gateFor, drillFor, SLOW_EX, skipList, skipAhead } from '../sched';
 import { Icon, Sheet, TopBar, Bar } from '../ui/common';
 
 const ICON: Record<string, string> = { locked: 'lock', available: 'playtri', passed: 'check', mastered: 'star' };
@@ -17,6 +17,7 @@ export function Learn() {
   const TRACKS = modeTracks(s.profile.mode), synth = s.profile.mode === 'synth';
   const [picked, setTrack] = useState<Track>('theory'), [open, setOpen] = useState<Lesson | null>(null), track = TRACKS.includes(picked) ? picked : TRACKS[0];
   const wide = useWide();
+  const [skip, setSkip] = useState<Track | null>(null), [to, setTo] = useState<number | null>(null);
   const column = (t: Track) => {
     const ls = LESSONS.filter((l) => l.track === t), levels = [...new Set(ls.map((l) => l.level))], stt = trackStats(s, t);
     return (
@@ -24,6 +25,7 @@ export function Learn() {
         {wide && TRACKS.length > 1 && <h2>{TRACK_NAME[t]}</h2>}
         <div className="small muted">{stt.passed} of {stt.lessons} lessons · {stt.mastered} of {stt.skills} skills mastered</div>
         <Bar v={stt.passed / stt.lessons} />
+        {t !== 'synth' && levels.some((lv) => skipList(s, t, lv).length > 0) && <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => { setSkip(t); setTo(null); }}>Skip ahead…</button>}
         {levels.map((lv) => (
           <div key={lv}>
             <div className="level-h">{t === 'synth' ? 'Unit' : 'Level'} {lv} · {LEVEL_NAME[t][lv]}</div>
@@ -63,6 +65,18 @@ export function Learn() {
                 </div>
               );
             })}
+          </div>
+        </Sheet>
+      )}
+      {skip && (
+        <Sheet title={`Skip ahead in ${TRACK_NAME[skip]}`} onClose={() => setSkip(null)}>
+          <div className="col">
+            <p className="muted small">Already know the earlier material, or lost your progress? Choose where to start. Earlier lessons are marked as passed (you can still open them) and no XP is given. Their skills still come up for review over the next week.</p>
+            {[...new Set(LESSONS.filter((x) => x.track === skip).map((x) => x.level))].filter((lv) => skipList(s, skip, lv).length > 0).map((lv) => (
+              <button key={lv} className="node" aria-pressed={to === lv} style={to === lv ? { outline: '3px solid var(--hue)' } : undefined} onClick={() => setTo(lv)}><span className="grow"><b>Start at level {lv}</b> · {LEVEL_NAME[skip][lv]}<br /><span className="small muted">Skips {skipList(s, skip, lv).length} lesson{skipList(s, skip, lv).length > 1 ? 's' : ''}</span></span></button>
+            ))}
+            <button className="btn primary big" disabled={to == null} onClick={() => { skipAhead(skip, to!); setSkip(null); }}>{to == null ? 'Choose a level' : `Skip to level ${to}`}</button>
+            <button className="btn ghost" onClick={() => setSkip(null)}>Cancel</button>
           </div>
         </Sheet>
       )}
