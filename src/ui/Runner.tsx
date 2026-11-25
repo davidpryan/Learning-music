@@ -1,4 +1,5 @@
 import { StaffInput } from './StaffInput';
+import { useShort } from './short';
 // The shared question runner: asks any exercise, takes any input, grades, records, gives feedback.
 import { useEffect, useRef, useState } from 'react';
 import { EX, exParams, Question, Slot, Answer } from '../exercises';
@@ -76,12 +77,14 @@ export function Runner(p: RunnerProps) {
   };
   const retry = () => { setRes(null); setTryN(tryN + 1); };
 
+  const short = useShort();
   return (
     <div className="col">
       {!p.bare && (
-        <div className="row">
+        <div className="row run-head">
           <span className="chip" aria-label={`Question ${i + 1} of ${p.count}`}>{i + 1} / {p.count > 900 ? '∞' : p.count}</span>
           <span className="grow" />
+          {a.kind === 'steps' && !isPerf && mode === 'screen' && <button className="btn sm" aria-pressed={!!settings.staffEntry} aria-label={settings.staffEntry ? 'Writing on the staff. Switch to keys' : 'Write on staff'} style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => set((x) => { x.profile.settings.staffEntry = !x.profile.settings.staffEntry; })}>{settings.staffEntry ? 'Use keys' : 'Write on staff'}</button>}
           {!isPerf && a.kind !== 'pattern' && a.kind !== 'panel' && <button className="btn sm" style={res ? { visibility: 'hidden' } : undefined} onClick={() => setHint(true)} disabled={hint || !!res}><Icon name="hint" size={14} />Hint</button>}
           {!p.auto && <button className="btn sm ghost" style={res ? { visibility: 'hidden' } : undefined} disabled={!!res} onClick={() => finish(false)}>{isPerf ? 'Skip' : a.kind === 'match' || a.kind === 'pattern' ? 'Give up' : 'Show answer'}</button>}
         </div>
@@ -91,7 +94,7 @@ export function Runner(p: RunnerProps) {
         {q.sub && <div className="muted small" style={{ marginTop: 2 }}>{q.sub}</div>}
       </div>
       {q.viz && <VizView v={q.viz} />}
-      {q.score && !isPerf && <Score spec={res && !res.ok && q.reveal ? q.reveal : q.score} scale={settings.notationScale} />}
+      {q.score && !isPerf && <Score spec={res && !res.ok && q.reveal ? q.reveal : q.score} scale={short ? Math.min(settings.notationScale, 0.8) : settings.notationScale} />}
       {q.kb && <Keyboard lo={q.kbRange?.[0] ?? 48} hi={q.kbRange?.[1] ?? 72} marks={Object.fromEntries(q.kb.map((m) => [m, 'accent' as KeyMark]))} display short labels={false} />}
       {/* The sound button keeps one place and one size whether or not the sound has played yet. */}
       {q.play && !p.noReplay && <button className={'btn big' + (heard ? '' : ' primary')} onClick={hear}><Icon name={heard ? 'replay' : 'playtri'} size={16} />{heard ? 'Hear it again' : 'Play the sound'}</button>}
@@ -117,15 +120,17 @@ export function Runner(p: RunnerProps) {
 
       {hint && !res && a.kind === 'steps' && <div className="chip accent" style={{ alignSelf: 'flex-start' }}>Hint: {a.steps.length > 1 ? 'it starts on ' : 'it includes '}{label(fromMidi(a.steps[0][0]))}</div>}
       {res && (
-        <div className={'feedback ' + (res.ok ? 'ok' : 'bad')} role="status" aria-live="polite">
+        <div className={'feedback run-foot ' + (res.ok ? 'ok' : 'bad')} role="status" aria-live="polite">
           <Icon name={res.ok ? 'check' : 'x'} />
           <div className="txt">{isPerf ? (res.ok ? 'Passed' : `Not yet: aim for ${Math.round(CFG.phrasePass * 100)}% on both`) : res.ok ? 'Correct' : 'Not quite'}{!isPerf && <span>{q.explain}</span>}</div>
           {res.ok && res.xp > 0 && <span className="chip ok" aria-label={`${res.xp} experience points`}>+{res.xp} XP</span>}
+          {/* Next sits inside the bar, and the bar sticks to the bottom of the screen, so it is never cut off */}
+          {!p.auto && !res.ok && !isPerf && <button className="btn primary" onClick={next} autoFocus>{i + 1 >= p.count ? 'Finish' : 'Next'}</button>}
         </div>
       )}
       {!q.score && res && q.reveal && <Score spec={q.reveal} scale={settings.notationScale} />}
-      {res && !p.auto && (!res.ok || isPerf) && (
-        <div className="row">
+      {res && !p.auto && isPerf && (
+        <div className="row run-foot plain">
           {isPerf && <button className="btn grow" onClick={retry}><Icon name="replay" size={16} />Try again</button>}
           <button className="btn primary grow" onClick={next} autoFocus>{i + 1 >= p.count ? 'Finish' : 'Next'}</button>
         </div>
@@ -169,7 +174,6 @@ function StepsArea({ q, a, mode, done, ok, labels, onFinish }: { q: Question; a:
       {a.steps.length > 1 && <div className="row"><span className="chip">Step {Math.min(idx + 1, a.steps.length)} of {a.steps.length}</span><div className="grow"><div className="bar"><i style={{ width: `${(idx / a.steps.length) * 100}%` }} /></div></div></div>}
       {mode === 'mic' && <><MicBar /><div className="small muted">{multi ? 'Sing or play the chord one note at a time, lowest first.' : 'Sing or play the note. Hold it steady.'}</div></>}
       {mode === 'midi' && <MidiBar />}
-      {mode === 'screen' && <div className="seg sm" role="group" aria-label="Answer with">{([['keys', 'Keys'], ['staff', 'Write on staff']] as const).map(([v, t]) => <button key={v} aria-pressed={(onStaff ? 'staff' : 'keys') === v} onClick={() => set((x) => { x.profile.settings.staffEntry = v === 'staff'; })}>{t}</button>)}</div>}
       {mode === 'screen' && !onStaff && <Keyboard lo={range[0]} hi={range[1]} marks={{ ...marks, ...reveal }} selected={sel} labels={labels} />}
       {mode === 'screen' && onStaff && <StaffInput lo={range[0]} hi={range[1]} marks={marks} selected={multi ? sel : undefined} reveal={done && ok === false ? a.steps[st.current.idx] : []} multi={multi} stepKey={idx} disabled={done} />}
       {mode === 'screen' && multi && !done && <button className="btn primary" disabled={!sel.length} onClick={() => evalChord('screen')}>Check chord ({sel.length} selected)</button>}

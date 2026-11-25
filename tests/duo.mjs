@@ -43,6 +43,26 @@ for (const [name, w, h] of SIZES) {
   check(`${name}: keyboard question fits the width`, kb.right >= 0 && kb.kbW <= w, JSON.stringify(kb));
   await page.close();
 }
+// Chrome on the Duo has taller toolbars than Safari: the page gets roughly 600 points unfolded on its side, 800 upright, 550 folded.
+for (const [name, w, h] of [['open in Chrome', 951, 600], ['open upright in Chrome', 669, 800], ['cover in Chrome', 466, 551], ['phone in Chrome', 390, 700]]) {
+  const page = await mk(w, h); const { click, back } = helpers(page);
+  await click('Skip setup'); await click('Practice', '.tabbar button');
+  for (const ex of ['Note identification', 'Scale construction']) {
+    await click(ex, '.node'); await click('Start', '.sheet .btn.primary'); await sleep(400);
+    const m = () => page.evaluate(() => { const root = document.querySelector('.shell:not([hidden])'); const kb = root.querySelector('.kb:not(.short)').getBoundingClientRect(), sc = root.querySelector('.score')?.getBoundingClientRect(), top = root.querySelector('.topbar').getBoundingClientRect().bottom;
+      const nx = [...root.querySelectorAll('button')].find((b) => /^(Next|Finish)$/.test(b.textContent.trim())); const r = nx?.getBoundingClientRect(); const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null; const foot = root.querySelector('.run-foot')?.getBoundingClientRect();
+      return { kbBottom: Math.round(innerHeight - kb.bottom), scoreTop: sc ? Math.round(sc.top - top) : 0, next: r ? Math.round(innerHeight - r.bottom) : null, nextHit: !!hit && (hit === nx || nx.contains(hit)), overlap: foot ? Math.round(kb.bottom - foot.top) : 0, scroll: Math.round(scrollY), sideways: document.documentElement.scrollWidth - innerWidth }; });
+    const a = await m();
+    check(`${name} ${w}x${h}: ${ex} shows the whole question and keyboard without scrolling`, a.kbBottom >= 0 && a.scoreTop >= 0 && a.sideways <= 0, JSON.stringify(a));
+    // answer wrongly: a key that is certainly not the answer
+    await page.evaluate(async () => { const input = await import('/src/input.ts'); const want = window.__q.answer.steps[0][0]; input.emitNote(want + 1, 'screen'); }); await sleep(450);
+    const b = await m();
+    check(`${name}: after a wrong answer the Next button is on screen and tappable`, b.next !== null && b.next >= 0 && b.nextHit && b.scroll === a.scroll, JSON.stringify(b));
+    check(`${name}: the verdict bar does not hide the keyboard`, b.overlap <= (h < 600 ? 70 : 2), String(b.overlap));
+    await back();
+  }
+  await page.close();
+}
 // folding and unfolding in the middle of things: same page, no reload
 {
   const page = await mk(466, 580); const { click, back, overflow, fit } = helpers(page);

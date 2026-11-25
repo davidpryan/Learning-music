@@ -243,6 +243,20 @@ table.simple { width: 100%; border-collapse: collapse; font-size: 14px; } table.
 .tb-menu-row .tb-chip { min-width: 46px; padding: 0; font-size: 20px; }
 
 .tb-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* After answering: the verdict and the Next button share one bar that sticks to the bottom of the screen. */
+.run-foot { position: sticky; bottom: 0; z-index: 3; align-items: center; border-radius: 12px; }
+.run-foot.plain { background: var(--paper); padding: 6px 0; border-radius: 0; }
+.run-foot > .btn { flex: 0 0 auto; }
+/* Short screens: less chrome around every question, and slightly shorter keys, so the staff, the keyboard and the
+   verdict bar fit together. Covers the Duo unfolded on its side and its cover display, in Chrome or Safari. */
+@media (max-height: 760px) {
+  .shell:has(.run-head) .topbar .status { display: none; }
+  .main:has(.run-head) { margin-top: 8px; padding-top: 10px; padding-bottom: 10px; }
+  .main:has(.run-head) .col { gap: 8px; }
+  .main:has(.run-head):not(:has(.dock)) .kb:not(.short) { height: 140px; }
+  .run-foot { padding-top: 8px; padding-bottom: 8px; }
+}
+@media (max-height: 620px) { .main:has(.run-head):not(:has(.dock)) .kb:not(.short) { height: 120px; } .main:has(.run-head) .prompt { font-size: 17px; } }
 .staff-in { position: relative; overflow: hidden; border: 2px solid var(--line2); border-radius: 12px; background: var(--white); cursor: crosshair; user-select: none; -webkit-user-select: none; }
 .staff-tip { position: absolute; top: 6px; right: 8px; font-weight: 700; background: var(--ink); color: var(--white); border-radius: 8px; padding: 2px 8px; }
 .seg.sm button { min-height: 34px; padding: 4px 10px; font-size: 13px; }

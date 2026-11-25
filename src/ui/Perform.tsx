@@ -1,3 +1,4 @@
+import { useShort } from './short';
 // Reading and rhythm at tempo: scan, count-in, play with the metronome, then a marked-up result.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Answer, Question } from '../exercises';
@@ -16,11 +17,6 @@ export interface PerfExtra { pp: number; rp: number; perfect?: number; good?: nu
 type PA = Extract<Answer, { kind: 'rhythm' | 'perform' }>;
 const RANK: Mark[] = ['ok', 'early', 'late', 'wrong', 'miss'];
 
-function useShort() {
-  const q = '(max-height: 720px)'; const [v, setV] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(q).matches);
-  useEffect(() => { if (typeof matchMedia === 'undefined') return; const m = matchMedia(q), h = () => setV(m.matches); h(); m.addEventListener('change', h); return () => m.removeEventListener('change', h); }, []);
-  return v;
-}
 export function Performer({ a, q, mode, onFinish, scan = CFG.scanSeconds, tempoOverride, arcade }: { a: PA; q: Question; mode: InputMode; onFinish: (ok: boolean, x: PerfExtra) => void; scan?: number; tempoOverride?: number; arcade?: boolean }) {
   const s = useS(), st = s.profile.settings, short = useShort();
   const passage = a.passage, expectP = a.kind === 'perform' ? a.expect ?? passage : passage;
